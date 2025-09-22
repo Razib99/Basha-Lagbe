@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'signup_screen.dart';
-import 'home_screen.dart';
+import 'home_screen.dart'; // <-- THIS LINE FIXES THE ERROR
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,36 +11,29 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // STEP 1: Add a Form Key and Text Editing Controllers
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-
   bool _rememberMe = false;
 
   @override
   void dispose() {
-    // Clean up controllers
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  // Function to handle the login logic
   void _logIn() {
-    // STEP 3: Validate the form before proceeding
     if (_formKey.currentState!.validate()) {
-      // If valid, show the pop-up and navigate
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (BuildContext context) {
-          // We can reuse the same dialog from the signup screen
           return const SignUpSuccessDialog();
         },
       );
 
-      Future.delayed(const Duration(seconds: 1), () {
+      Future.delayed(const Duration(seconds: 2), () {
         Navigator.of(context).pop();
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const HomeScreen()),
@@ -68,7 +61,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           SafeArea(
             child: SingleChildScrollView(
-              // STEP 2: Wrap the content in a Form widget
               child: Form(
                 key: _formKey,
                 child: Padding(
@@ -109,7 +101,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Helper Widgets
   Widget _buildTextFormField({required TextEditingController controller, required String hint, bool obscure = false}) {
     return TextFormField(
       controller: controller,
@@ -201,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildLoginButton() {
     return GestureDetector(
-      onTap: _logIn, // Calls the validation function
+      onTap: _logIn,
       child: Container(
         width: 345,
         height: 51,

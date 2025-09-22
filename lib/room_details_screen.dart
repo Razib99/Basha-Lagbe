@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class ApartmentDetailsScreen extends StatelessWidget {
-  const ApartmentDetailsScreen({super.key});
+class RoomDetailsScreen extends StatelessWidget {
+  const RoomDetailsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +74,7 @@ class ApartmentDetailsScreen extends StatelessWidget {
           bottomRight: Radius.circular(30),
         ),
         child: Image.asset(
-          'assets/apartment_hero.png',
+          'assets/room_hero.png',
           width: double.infinity,
           fit: BoxFit.cover,
         ),
@@ -87,7 +87,7 @@ class ApartmentDetailsScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Modern Apartment',
+          'Cozy Room',
           style: TextStyle(
             fontFamily: 'Raleway',
             fontSize: 24,
@@ -106,7 +106,7 @@ class ApartmentDetailsScreen extends StatelessWidget {
         ),
         SizedBox(height: 8),
         Text(
-          '3 Bed    3 Bath   2 Balcony',
+          '1 Bed    1 Bath',
           style: TextStyle(
             fontFamily: 'Inter',
             fontSize: 11,
@@ -149,7 +149,7 @@ class ApartmentDetailsScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Devid', style: TextStyle(fontWeight: FontWeight.bold)),
-              Text('Owner Modern Apartment', style: TextStyle(color: Colors.grey, fontSize: 12)),
+              Text('Owner Cozy Room', style: TextStyle(color: Colors.grey, fontSize: 12)),
             ],
           ),
           const Spacer(),
@@ -313,7 +313,7 @@ class _GalleryPopupState extends State<GalleryPopup> {
     super.initState();
     _pageController = PageController(
       initialPage: widget.initialIndex,
-      viewportFraction: 0.8,
+      viewportFraction: 0.8, // Show adjacent images
     );
     _pageController.addListener(() {
       setState(() {

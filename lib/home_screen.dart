@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'account_screen.dart';
-import 'house_details_screen.dart';
-import 'apartment_details_screen.dart';
 import 'electrician_details_screen.dart';
 import 'maid_details_screen.dart';
 import 'car_parking_details_screen.dart';
+import 'apartment_details_screen.dart';
+import 'room_details_screen.dart';
+import 'house_details_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -89,30 +90,17 @@ class HomeScreen extends StatelessWidget {
           return GestureDetector(
             onTap: () {
               if (category['label'] == 'House') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HouseDetailsScreen()),
-                );
-              } else if (category['label'] == 'Apartment') { // <-- 2. ADD THIS LOGIC
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ApartmentDetailsScreen()),
-                );
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const HouseDetailsScreen()));
+              } else if (category['label'] == 'Apartment') {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const ApartmentDetailsScreen()));
+              } else if (category['label'] == 'Room') {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const RoomDetailsScreen()));
               } else if (category['label'] == 'Electricians') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ElectricianDetailsScreen()),
-                );
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const ElectricianDetailsScreen()));
               } else if (category['label'] == 'Maid') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const MaidDetailsScreen()),
-                );
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const MaidDetailsScreen()));
               } else if (category['label'] == 'Car Parking') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const CarParkingDetailsScreen()),
-                );
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const CarParkingDetailsScreen()));
               }
             },
             child: _buildCategoryIcon(

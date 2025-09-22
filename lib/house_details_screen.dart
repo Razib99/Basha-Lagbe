@@ -251,19 +251,36 @@ class HouseDetailsScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Rent', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                Text('35,000/mo', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                Text(
+                  'Rent',
+                  style: TextStyle(fontFamily: 'Inter', fontSize: 20, fontWeight: FontWeight.w500, color: Colors.white),
+                ),
+                Text(
+                  '35,000/mo',
+                  style: TextStyle(fontFamily: 'Inter', fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white),
+                ),
               ],
             ),
-            ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0A8ED9),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+            GestureDetector(
+              onTap: () {},
+              child: Container(
+                width: 137,
+                height: 45,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFA0DAFB), Color(0xFF0A8ED9)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+                child: const Center(
+                  child: Text(
+                    'Rent Now',
+                    style: TextStyle(fontFamily: 'Raleway', fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white),
+                  ),
+                ),
               ),
-              child: const Text('Rent Now'),
             ),
           ],
         ),
@@ -289,11 +306,20 @@ class GalleryPopup extends StatefulWidget {
 
 class _GalleryPopupState extends State<GalleryPopup> {
   late final PageController _pageController;
+  double _currentPage = 0.0;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: widget.initialIndex);
+    _pageController = PageController(
+      initialPage: widget.initialIndex,
+      viewportFraction: 0.8,
+    );
+    _pageController.addListener(() {
+      setState(() {
+        _currentPage = _pageController.page!;
+      });
+    });
   }
 
   @override
@@ -314,9 +340,18 @@ class _GalleryPopupState extends State<GalleryPopup> {
               controller: _pageController,
               itemCount: widget.images.length,
               itemBuilder: (context, index) {
-                return Center(
-                  child: InteractiveViewer(
-                    child: Image.asset(widget.images[index]),
+                double scale = 1.0;
+                if (_pageController.position.haveDimensions) {
+                  scale = 1.0 - ((_currentPage - index).abs() * 0.2);
+                  scale = scale.clamp(0.8, 1.0);
+                }
+
+                return Transform.scale(
+                  scale: scale,
+                  child: Center(
+                    child: InteractiveViewer(
+                      child: Image.asset(widget.images[index]),
+                    ),
                   ),
                 );
               },
