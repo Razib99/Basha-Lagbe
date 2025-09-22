@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'account_screen.dart';
 import 'house_details_screen.dart';
+import 'apartment_details_screen.dart';
 import 'electrician_details_screen.dart';
 import 'maid_details_screen.dart';
 import 'car_parking_details_screen.dart';
@@ -91,6 +92,11 @@ class HomeScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const HouseDetailsScreen()),
+                );
+              } else if (category['label'] == 'Apartment') { // <-- 2. ADD THIS LOGIC
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ApartmentDetailsScreen()),
                 );
               } else if (category['label'] == 'Electricians') {
                 Navigator.push(

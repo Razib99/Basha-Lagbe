@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class HouseDetailsScreen extends StatelessWidget {
-  const HouseDetailsScreen({super.key});
+class ApartmentDetailsScreen extends StatelessWidget {
+  const ApartmentDetailsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -74,8 +74,9 @@ class HouseDetailsScreen extends StatelessWidget {
           bottomRight: Radius.circular(30),
         ),
         child: Image.asset(
-          'assets/green_house_details.png',
-          width: double.infinity,
+          'assets/apartment_hero.png',
+          // REMOVED: width: 393, to make it fill the screen
+          width: double.infinity, // ADDED: Ensures it fills the width
           fit: BoxFit.cover,
         ),
       ),
@@ -87,7 +88,7 @@ class HouseDetailsScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Green House',
+          'Modern Apartment',
           style: TextStyle(
             fontFamily: 'Raleway',
             fontSize: 24,
@@ -149,7 +150,7 @@ class HouseDetailsScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Devid', style: TextStyle(fontWeight: FontWeight.bold)),
-              Text('Owner Green House', style: TextStyle(color: Colors.grey, fontSize: 12)),
+              Text('Owner Modern Apartment', style: TextStyle(color: Colors.grey, fontSize: 12)),
             ],
           ),
           const Spacer(),
@@ -252,7 +253,7 @@ class HouseDetailsScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text('Rent', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                Text('35,000/mo', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                Text('15,000/mo', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
               ],
             ),
             ElevatedButton(

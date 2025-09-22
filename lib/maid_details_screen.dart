@@ -43,7 +43,7 @@ class MaidDetailsScreen extends StatelessWidget {
     );
   }
 
-  // --- Helper Widgets ---
+  // --- All Helper Widgets MUST be inside this class ---
 
   Widget _buildHeaderImage(BuildContext context) {
     return SizedBox(
@@ -224,14 +224,14 @@ class MaidDetailsScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 5)],
-                  image: const DecorationImage(image: AssetImage('assets/david_profile.png'), fit: BoxFit.cover),
+                  image: const DecorationImage(image: AssetImage('assets/contact_profile.png'), fit: BoxFit.cover),
                 ),
               ),
               const SizedBox(width: 12),
               const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Devid', style: TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black)),
+                  Text('Sofia', style: TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black)),
                   Text('Maid', style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF868585))),
                 ],
               ),
@@ -338,4 +338,4 @@ class MaidDetailsScreen extends StatelessWidget {
       ),
     );
   }
-}
+} // <-- This is the closing brace for the MaidDetailsScreen class
