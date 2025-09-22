@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'account_screen.dart';
+import 'house_details_screen.dart';
 import 'electrician_details_screen.dart';
 import 'maid_details_screen.dart';
 import 'car_parking_details_screen.dart';
@@ -86,17 +87,22 @@ class HomeScreen extends StatelessWidget {
           final category = _categories[index];
           return GestureDetector(
             onTap: () {
-              if (category['label'] == 'Electricians') {
+              if (category['label'] == 'House') {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const ElectricianDetailsScreen()), // <-- FIXED TYPO HERE
+                  MaterialPageRoute(builder: (context) => const HouseDetailsScreen()),
+                );
+              } else if (category['label'] == 'Electricians') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ElectricianDetailsScreen()),
                 );
               } else if (category['label'] == 'Maid') {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const MaidDetailsScreen()),
                 );
-              }else if (category['label'] == 'Car Parking') { // <-- 2. ADD THIS LOGIC
+              } else if (category['label'] == 'Car Parking') {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const CarParkingDetailsScreen()),
