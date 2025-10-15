@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'login_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -27,22 +29,60 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
-  void _signUp() {
+  void _signUp() async {
     if (_formKey.currentState!.validate()) {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (BuildContext context) {
-          return const SignUpSuccessDialog();
-        },
+        builder: (context) => const Center(child: CircularProgressIndicator()),
       );
 
-      Future.delayed(const Duration(seconds: 1), () {
-        Navigator.of(context).pop();
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
+      try {
+        UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
         );
-      });
+
+        String userId = userCredential.user!.uid;
+
+        await FirebaseFirestore.instance.collection('users').doc(userId).set({
+          'firstName': _firstNameController.text.trim(),
+          'lastName': _lastNameController.text.trim(),
+          'email': _emailController.text.trim(),
+          'phone': _phoneController.text.trim(),
+          'createdAt': Timestamp.now(),
+        });
+
+        if (!mounted) return;
+        Navigator.of(context).pop(); // Close loading indicator
+
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) => const SignUpSuccessDialog(),
+        );
+
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) {
+            Navigator.of(context).pop();
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => const LoginScreen()),
+            );
+          }
+        });
+
+      } catch (e) { // This now catches ANY error (Auth or Firestore)
+        if (mounted) Navigator.of(context).pop(); // Make sure loading dialog always closes
+
+        print('Error during sign up: $e'); // Print the specific error
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sign up failed. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -89,11 +129,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       const SizedBox(height: 15),
                       _buildTextFormField(controller: _passwordController, hint: 'Password', obscure: true),
                       const SizedBox(height: 20),
-                      _buildLoginLink(), // <-- Re-added this
+                      _buildLoginLink(),
                       const SizedBox(height: 30),
-                      _buildDivider(), // <-- Re-added this
+                      _buildDivider(),
                       const SizedBox(height: 30),
-                      _buildSocialButtons(), // <-- Re-added this
+                      _buildSocialButtons(),
                       const SizedBox(height: 40),
                       _buildContinueButton(),
                       const SizedBox(height: 20),
@@ -108,6 +148,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
+  // --- Helper Widgets ---
   Widget _buildTextFormField({required TextEditingController controller, required String hint, bool obscure = false}) {
     return TextFormField(
       controller: controller,
@@ -130,7 +171,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  // ## RE-ADDED HELPER METHODS ##
   Widget _buildLoginLink() {
     return Center(
       child: RichText(
@@ -183,7 +223,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 }
 
-// Your SignUpSuccessDialog class
+// SignUpSuccessDialog class
 class SignUpSuccessDialog extends StatelessWidget {
   const SignUpSuccessDialog({super.key});
 

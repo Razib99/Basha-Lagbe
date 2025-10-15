@@ -1,29 +1,34 @@
 import 'package:flutter/material.dart';
-import 'splash_screen.dart'; // Make sure this file is in the same 'lib' folder
+import 'package:basha_lagbe/splash_screen.dart';
 
-void main() {
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+
+void main() async {
+
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'BashaLagbe',
-      theme: ThemeData( // <--- Cursor is here
-        // This sets the default font for the entire app to 'Inter'
+      theme: ThemeData(
         fontFamily: 'Inter',
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      // This removes the "debug" banner from the top-right corner
       debugShowCheckedModeBanner: false,
-      // This sets your SplashScreen as the first page the user sees
       home: const SplashScreen(),
     );
-
   }
 }

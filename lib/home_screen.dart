@@ -6,6 +6,7 @@ import 'car_parking_details_screen.dart';
 import 'apartment_details_screen.dart';
 import 'room_details_screen.dart';
 import 'house_details_screen.dart';
+import 'search_page.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -31,6 +32,8 @@ class HomeScreen extends StatelessWidget {
               _buildHeader(context),
               const SizedBox(height: 24.0),
               _buildCategoryBar(context),
+              const SizedBox(height: 24.0),
+              _buildSearchBar(context),
               const SizedBox(height: 24.0),
               _buildBestForYouSection(),
               const SizedBox(height: 24.0),
@@ -128,6 +131,38 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Text(label, style: const TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF727272))),
         ],
+      ),
+    );
+  }
+
+  // ## SEARCH BAR WIDGET ##
+  Widget _buildSearchBar(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SearchPage()),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          decoration: BoxDecoration(
+            color: Colors.grey[200],
+            borderRadius: BorderRadius.circular(30.0),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.search, color: Colors.grey),
+              SizedBox(width: 8),
+              Text(
+                'Search for a home...',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

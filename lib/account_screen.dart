@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
+import 'personal_info_screen.dart';
 
 class AccountScreen extends StatelessWidget {
   const AccountScreen({super.key});
@@ -35,7 +36,18 @@ class AccountScreen extends StatelessWidget {
               const SizedBox(height: 40),
               const Text('General', style: TextStyle(fontFamily: 'Almarai', fontSize: 13, color: Color(0xFFA8A7A7))),
               const SizedBox(height: 10),
-              _buildListTile(iconPath: 'assets/icon_personal.png', title: 'Personal Info', onTap: () {}),
+
+              _buildListTile(
+                iconPath: 'assets/icon_personal.png',
+                title: 'Personal Info',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const PersonalInfoScreen()),
+                  );
+                },
+              ),
+
               _buildListTile(iconPath: 'assets/icon_security.png', title: 'Security', onTap: () {}),
               _buildListTile(iconPath: 'assets/icon_settings.png', title: 'Settings', onTap: () {}),
               const SizedBox(height: 40),
@@ -49,7 +61,6 @@ class AccountScreen extends StatelessWidget {
                 title: 'Log Out',
                 color: const Color(0xFFDF3E3E),
                 onTap: () {
-                  // This will remove all screens and go back to the login page
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (context) => const LoginScreen()),
                         (Route<dynamic> route) => false,

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'signup_screen.dart';
-import 'home_screen.dart'; // <-- THIS LINE FIXES THE ERROR
+import 'home_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -23,22 +24,52 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _logIn() {
+
+  void _logIn() async {
     if (_formKey.currentState!.validate()) {
+      // Show a loading indicator
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (BuildContext context) {
-          return const SignUpSuccessDialog();
-        },
+        builder: (context) => const Center(child: CircularProgressIndicator()),
       );
 
-      Future.delayed(const Duration(seconds: 2), () {
-        Navigator.of(context).pop();
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+      try {
+        // Sign in the user with Firebase
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
         );
-      });
+
+        // If sign-in is successful, navigate to the home screen
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+                (Route<dynamic> route) => false,
+          );
+        }
+
+      } on FirebaseAuthException catch (e) {
+        // If there's an error, close the loading indicator
+        if (mounted) Navigator.of(context).pop();
+
+        // Show an error message
+        String errorMessage = 'Login failed. Please check your credentials.';
+        if (e.code == 'user-not-found') {
+          errorMessage = 'No user found for that email.';
+        } else if (e.code == 'wrong-password') {
+          errorMessage = 'Wrong password provided for that user.';
+        } else if (e.code == 'invalid-credential') {
+          errorMessage = 'Invalid credentials. Please check your email and password.';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -101,6 +132,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // --- Helper Widgets ---
   Widget _buildTextFormField({required TextEditingController controller, required String hint, bool obscure = false}) {
     return TextFormField(
       controller: controller,

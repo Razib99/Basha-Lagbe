@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "745552863171",
+    "project_id": "basha-lagbe-fed43",
+    "storage_bucket": "basha-lagbe-fed43.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:745552863171:android:fe273430bc68f224da2776",
+        "android_client_info": {
+          "package_name": "com.example.basha_lagbe"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB9INHpBxdBgQd7SLNyI8rJglgN4EMn9cw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
