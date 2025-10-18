@@ -59,6 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SizedBox(height: 19.0), // Head space.
               _buildHeader(context),
               const SizedBox(height: 24.0),
               _buildCategoryBar(context),
@@ -95,12 +96,10 @@ class _HomeScreenState extends State<HomeScreen> {
               end: Alignment.bottomCenter,
             ),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Image.asset(
-              'assets/add_listing_icon.png',
-              color: Colors.white,
-            ),
+          child: const Icon(
+            Icons.add,
+            color: Colors.white,
+            size: 30, // Adjust size
           ),
         ),
       ),

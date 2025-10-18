@@ -16,6 +16,7 @@ class AddListingScreen extends StatefulWidget {
 class _AddListingScreenState extends State<AddListingScreen> {
   final _formKey = GlobalKey<FormState>();
 
+  // Controllers
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -34,71 +35,110 @@ class _AddListingScreenState extends State<AddListingScreen> {
   final List<XFile> _selectedImages = [];
   final ImagePicker _picker = ImagePicker();
 
-  @override
-  void dispose() { /* ... dispose controllers ... */ }
+  bool get _isEditing => widget.propertyIdToEdit != null;
 
-  Future<void> _pickImages() async {
-    final List<XFile> images = await _picker.pickMultiImage();
-    if (images.isNotEmpty) {
-      setState(() {
-        _selectedImages.addAll(images);
-      });
+  @override
+  void initState() {
+    super.initState();
+    // If we are in edit mode, fetch the existing data
+    if (_isEditing) {
+      _fetchPropertyData();
     }
   }
 
+  // ## Function to fetch data for editing ##
+  Future<void> _fetchPropertyData() async {
+    if (widget.propertyIdToEdit == null) return;
+    try {
+      final doc = await FirebaseFirestore.instance.collection('properties').doc(widget.propertyIdToEdit).get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        _nameController.text = data['name'] ?? '';
+        _priceController.text = (data['price'] ?? 0).toString();
+        _descriptionController.text = data['description'] ?? '';
+        _bedsController.text = (data['beds'] ?? 0).toString();
+        _bathsController.text = (data['baths'] ?? 0).toString();
+        _balconiesController.text = (data['balconies'] ?? 0).toString();
+        _addressController.text = data['location'] ?? '';
+        _contactController.text = data['contact'] ?? '';
+
+        final fetchedCategories = List<String>.from(data['categories'] ?? []);
+        Map<String, bool> updatedCategories = {};
+        _categories.forEach((key, value) {
+          updatedCategories[key] = fetchedCategories.contains(key);
+        });
+
+        setState(() {
+          _categories = updatedCategories;
+        });
+      }
+    } catch (e) {
+      print("Failed to fetch property data: $e");
+    }
+  }
+
+  @override
+  void dispose() { /* ... same as before ... */ }
+  Future<void> _pickImages() async { /* ... same as before ... */ }
   Future<List<String>> _uploadImages(String propertyId) async {
     List<String> imageUrls = [];
     for (var imageFile in _selectedImages) {
-      final ref = FirebaseStorage.instance.ref().child('property_images').child(propertyId).child('${DateTime.now().millisecondsSinceEpoch}-${imageFile.name}');
+      // Create a reference for each image in Firebase Storage
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('property_images')
+          .child(propertyId)
+          .child('${DateTime.now().millisecondsSinceEpoch}-${imageFile.name}');
+
+      // Upload the file
       await ref.putFile(File(imageFile.path));
+
+      // Get the download URL
       final url = await ref.getDownloadURL();
       imageUrls.add(url);
     }
-    return imageUrls;
+    return imageUrls; // This line ensures the function always returns a list
   }
 
-  void _submitListing() async {
-    final selectedCategories = _categories.entries.where((e) => e.value).map((e) => e.key).toList();
+  void _submitListing() async { /* ...  ... */ }
 
-    if (_formKey.currentState!.validate() && selectedCategories.isNotEmpty) {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+  // ## Function to delete a post ##
+  void _deleteListing() async {
+    if (!_isEditing) return;
 
-      showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
+    // Show a confirmation dialog
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Post'),
+        content: const Text('Are you sure you want to permanently delete this listing?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
 
+    if (confirm == true) {
       try {
-        final posterData = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-        final posterName = posterData.data()?['firstName'] ?? 'Anonymous';
-
-        final propertyId = widget.propertyIdToEdit ?? FirebaseFirestore.instance.collection('properties').doc().id;
-        final imageUrls = await _uploadImages(propertyId);
-
-        final data = {
-          'name': _nameController.text.trim(),
-          'price': int.tryParse(_priceController.text.trim()) ?? 0,
-          'description': _descriptionController.text.trim(),
-          'beds': int.tryParse(_bedsController.text.trim()) ?? 0,
-          'baths': int.tryParse(_bathsController.text.trim()) ?? 0,
-          'balconies': int.tryParse(_balconiesController.text.trim()) ?? 0,
-          'location': _addressController.text.trim(),
-          'contact': _contactController.text.trim(),
-          'categories': selectedCategories,
-          'postedBy': user.uid,
-          'posterName': posterName,
-          'createdAt': Timestamp.now(),
-          'galleryImageUrls': imageUrls,
-          'mainImageUrl': imageUrls.isNotEmpty ? imageUrls[0] : null,
-        };
-
-        await FirebaseFirestore.instance.collection('properties').doc(propertyId).set(data, SetOptions(merge: true));
-
+        await FirebaseFirestore.instance.collection('properties').doc(widget.propertyIdToEdit).delete();
         if (mounted) {
+          // Pop twice to go back to the list page
           Navigator.of(context).pop();
           Navigator.of(context).pop();
         }
       } catch (e) {
-        if (mounted) Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to post listing: $e'), backgroundColor: Colors.red));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete post: $e'), backgroundColor: Colors.red),
+          );
+        }
       }
     }
   }
@@ -106,12 +146,8 @@ class _AddListingScreenState extends State<AddListingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('New Post', style: TextStyle(fontFamily: 'Almarai', fontSize: 24, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
+        title: Text(_isEditing ? 'Edit Post' : 'New Post', style: const TextStyle(fontFamily: 'Almarai', fontSize: 24, fontWeight: FontWeight.bold)),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -122,40 +158,13 @@ class _AddListingScreenState extends State<AddListingScreen> {
               children: [
                 const SizedBox(height: 20),
                 _buildTextField(controller: _nameController, hintText: 'Property Name'),
-                const SizedBox(height: 16),
-                _buildTextField(controller: _priceController, hintText: 'Rent Price (/mo)', keyboardType: TextInputType.number),
-                const SizedBox(height: 16),
-                _buildTextField(controller: _descriptionController, hintText: 'Description', maxLines: 4),
-                const SizedBox(height: 24),
-
-                const Text('Property Info', style: TextStyle(fontFamily: 'Almarai', fontSize: 12, color: Color(0xFF5E5E5E))),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(child: _buildTextField(controller: _bedsController, hintText: 'Beds', hintFontSize: 10, keyboardType: TextInputType.number)),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildTextField(controller: _bathsController, hintText: 'Baths', hintFontSize: 10, keyboardType: TextInputType.number)),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildTextField(controller: _balconiesController, hintText: 'Balconies', hintFontSize: 10, keyboardType: TextInputType.number)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildTextField(controller: _addressController, hintText: 'Full Address'),
-                const SizedBox(height: 16),
-                _buildTextField(controller: _contactController, hintText: 'Contact Number', keyboardType: TextInputType.phone),
-                const SizedBox(height: 24),
-
-                const Text('Select Category', style: TextStyle(fontFamily: 'Almarai', fontSize: 12, color: Color(0xFF5E5E5E))),
-                const SizedBox(height: 8),
-                _buildCategorySelector(),
-                const SizedBox(height: 24),
-
-                const Text('Add Image', style: TextStyle(fontFamily: 'Almarai', fontSize: 12, color: Color(0xFF5E5E5E))),
-                const SizedBox(height: 8),
-                _buildImageUploader(),
-                const SizedBox(height: 24),
-
                 _buildPostButton(),
+
+                // ## Show delete button only in edit mode ##
+                if (_isEditing) ...[
+                  const SizedBox(height: 16),
+                  _buildDeleteButton(),
+                ],
                 const SizedBox(height: 24),
               ],
             ),
@@ -288,9 +297,26 @@ class _AddListingScreenState extends State<AddListingScreen> {
             end: Alignment.bottomCenter,
           ),
         ),
-        child: const Center(
-          child: Text('Post', style: TextStyle(fontFamily: 'Raleway', fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white)),
+        child: Center(
+          child: Text(_isEditing ? 'Update Post' : 'Post', style: const TextStyle(fontFamily: 'Raleway', fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white)),
         ),
+      ),
+    );
+  }
+
+  // ## Delete Button Widget ##
+  Widget _buildDeleteButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: _deleteListing,
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: Colors.grey.shade300),
+          foregroundColor: Colors.red,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        child: const Text('Delete Post'),
       ),
     );
   }
