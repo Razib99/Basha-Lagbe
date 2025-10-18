@@ -1,15 +1,27 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'account_screen.dart';
-import 'electrician_details_screen.dart';
-import 'maid_details_screen.dart';
-import 'car_parking_details_screen.dart';
+import 'add_listing_screen.dart';
 import 'apartment_details_screen.dart';
-import 'room_details_screen.dart';
+import 'car_parking_details_screen.dart';
+import 'electrician_details_screen.dart';
 import 'house_details_screen.dart';
+import 'maid_details_screen.dart';
+import 'property_detail_screen.dart';
+import 'room_details_screen.dart';
 import 'search_page.dart';
+import 'widgets/property_list_item.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  String _userName = 'Loading...';
 
   final List<Map<String, String>> _categories = const [
     {'icon': 'assets/icon_house.png', 'label': 'House'},
@@ -19,6 +31,24 @@ class HomeScreen extends StatelessWidget {
     {'icon': 'assets/icon_maid.png', 'label': 'Maid'},
     {'icon': 'assets/icon_parking.png', 'label': 'Car Parking'},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final userData = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (mounted && userData.exists) {
+        setState(() {
+          _userName = userData.data()?['firstName'] ?? 'User';
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,8 +72,42 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AddListingScreen()),
+          );
+        },
+        elevation: 6,
+        shape: const CircleBorder(),
+        child: Container(
+          width: 60,
+          height: 60,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFFA0DAFB),
+                Color(0xFF0A8ED9),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Image.asset(
+              'assets/add_listing_icon.png',
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ),
     );
   }
+
+  // --- Helper Widgets ---
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
@@ -51,20 +115,24 @@ class HomeScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Column(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Devid', style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black)),
-              SizedBox(height: 4),
-              Text('Dhaka, Basundhara', style: TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFFA8A8A8))),
+              Text(
+                _userName,
+                style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Dhaka, Basundhara',
+                style: TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFFA8A8A8)),
+              ),
             ],
           ),
           GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AccountScreen()),
-              );
+            onTap: () async {
+              await Navigator.push(context, MaterialPageRoute(builder: (context) => const AccountScreen()));
+              _fetchUserData();
             },
             child: Container(
               width: 63,
@@ -92,18 +160,22 @@ class HomeScreen extends StatelessWidget {
           final category = _categories[index];
           return GestureDetector(
             onTap: () {
+              Widget? nextPage;
               if (category['label'] == 'House') {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const HouseDetailsScreen()));
+                nextPage = const HouseDetailsScreen();
               } else if (category['label'] == 'Apartment') {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const ApartmentDetailsScreen()));
+                nextPage = const ApartmentDetailsScreen();
               } else if (category['label'] == 'Room') {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const RoomDetailsScreen()));
+                nextPage = const RoomDetailsScreen();
               } else if (category['label'] == 'Electricians') {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const ElectricianDetailsScreen()));
+                nextPage = const ElectricianDetailsScreen();
               } else if (category['label'] == 'Maid') {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const MaidDetailsScreen()));
+                nextPage = const MaidDetailsScreen();
               } else if (category['label'] == 'Car Parking') {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const CarParkingDetailsScreen()));
+                nextPage = const CarParkingDetailsScreen();
+              }
+              if (nextPage != null) {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => nextPage!));
               }
             },
             child: _buildCategoryIcon(
@@ -135,7 +207,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // ## SEARCH BAR WIDGET ##
   Widget _buildSearchBar(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -181,29 +252,69 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20.0),
-            child: Stack(
-              children: [
-                Image.asset('assets/green_house.png', width: 348, height: 326, fit: BoxFit.cover),
-                Positioned.fill(child: Container(decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.transparent, Colors.black.withOpacity(0.8)], begin: Alignment.topCenter, end: Alignment.bottomCenter, stops: const [0.5, 1.0])))),
-                const Positioned(
-                  bottom: 20,
-                  left: 20,
-                  right: 20,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('properties').orderBy('createdAt', descending: true).limit(1).snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox(height: 326, child: Center(child: CircularProgressIndicator()));
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const SizedBox(height: 326, child: Center(child: Text('No listings yet.')));
+              }
+
+              final latestPropertyDoc = snapshot.data!.docs.first;
+              final latestPropertyData = latestPropertyDoc.data() as Map<String, dynamic>;
+              final String propertyId = latestPropertyDoc.id;
+
+              final imageUrl = latestPropertyData['mainImageUrl'] ?? 'assets/green_house.png';
+
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PropertyDetailScreen(propertyId: propertyId),
+                    ),
+                  );
+                },
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20.0),
+                  child: Stack(
                     children: [
-                      Text('Green House', style: TextStyle(fontFamily: 'Almarai', fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
-                      SizedBox(height: 8),
-                      Text('Road 10, Basundhara R/A', style: TextStyle(fontFamily: 'Almarai', fontSize: 11, color: Colors.white)),
-                      SizedBox(height: 8),
-                      Text('3 Bed    3 Bath   2 Balcony', style: TextStyle(fontFamily: 'Almarai', fontSize: 11, color: Colors.white)),
+                      Image.network(
+                        imageUrl,
+                        width: 348,
+                        height: 326,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(width: 348, height: 326, color: Colors.grey[300], child: const Center(child: CircularProgressIndicator()));
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(width: 348, height: 326, color: Colors.grey[300], child: const Icon(Icons.broken_image, color: Colors.grey));
+                        },
+                      ),
+                      Positioned.fill(child: Container(decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.transparent, Colors.black.withOpacity(0.8)], begin: Alignment.topCenter, end: Alignment.bottomCenter, stops: const [0.5, 1.0])))),
+                      Positioned(
+                        bottom: 20,
+                        left: 20,
+                        right: 20,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(latestPropertyData['name'] ?? 'No Name', style: const TextStyle(fontFamily: 'Almarai', fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+                            const SizedBox(height: 8),
+                            Text(latestPropertyData['location'] ?? 'No Location', style: const TextStyle(fontFamily: 'Almarai', fontSize: 11, color: Colors.white)),
+                            const SizedBox(height: 8),
+                            Text('${latestPropertyData['beds'] ?? 0} Bed    ${latestPropertyData['baths'] ?? 0} Bath   ${latestPropertyData['balconies'] ?? 0} Balcony', style: const TextStyle(fontFamily: 'Almarai', fontSize: 11, color: Colors.white)),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ],
-            ),
+              );
+            },
           ),
         ],
       ),
@@ -224,53 +335,51 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Column(
-            children: List.generate(8, (index) => const PropertyListItem()),
-          ),
-        ],
-      ),
-    );
-  }
-}
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('properties').orderBy('createdAt', descending: true).snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return const Center(child: Text('Something went wrong.'));
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(child: Text('No listings found.'));
+              }
 
-class PropertyListItem extends StatelessWidget {
-  const PropertyListItem({super.key});
+              final properties = snapshot.data!.docs;
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 96,
-      margin: const EdgeInsets.only(bottom: 16.0),
-      padding: const EdgeInsets.all(12.0),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(15.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10.0),
-            child: Image.asset('assets/house_list_item.png', width: 65, height: 67, fit: BoxFit.cover),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                const Text('Green House', style: TextStyle(fontFamily: 'Almarai', fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black)),
-                const Text('Road 10, Basundhara R/A', style: TextStyle(fontFamily: 'Almarai', fontSize: 11, color: Colors.black)),
-                const Text('3 Bed    3 Bath   2 Balcony', style: TextStyle(fontFamily: 'Almarai', fontSize: 11, fontWeight: FontWeight.w500, color: Colors.black)),
-              ],
-            ),
+              return ListView.builder(
+                itemCount: properties.length,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemBuilder: (context, index) {
+                  final propertyData = properties[index].data() as Map<String, dynamic>;
+                  final propertyId = properties[index].id;
+
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PropertyDetailScreen(propertyId: propertyId),
+                        ),
+                      );
+                    },
+                    child: PropertyListItem(
+                      imageUrl: propertyData['mainImageUrl'],
+                      posterName: propertyData['posterName'] ?? 'Owner',
+                      title: propertyData['name'] ?? 'No Name',
+                      location: propertyData['location'] ?? 'No Location',
+                      beds: propertyData['beds'] ?? 0,
+                      baths: propertyData['baths'] ?? 0,
+                      balconies: propertyData['balconies'] ?? 0,
+                    ),
+                  );
+                },
+              );
+            },
           ),
         ],
       ),

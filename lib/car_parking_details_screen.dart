@@ -53,7 +53,7 @@ class CarParkingDetailsScreen extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           Image.asset(
-            'assets/car_parking_hero.png', // <-- CHANGED
+            'assets/car_parking_hero.png',
             fit: BoxFit.cover,
           ),
           Positioned(
@@ -80,7 +80,7 @@ class CarParkingDetailsScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              'Car Parking', // <-- CHANGED
+              'Car Parking',
               style: TextStyle(
                 fontFamily: 'Raleway',
                 fontSize: 24,

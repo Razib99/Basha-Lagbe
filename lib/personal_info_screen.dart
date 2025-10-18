@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PersonalInfoScreen extends StatefulWidget {
   const PersonalInfoScreen({super.key});
@@ -10,49 +12,86 @@ class PersonalInfoScreen extends StatefulWidget {
 }
 
 class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
-  // --- MOCK DATA ---
-  final Map<String, String> _userData = {
-    'name': 'Devid',
-    'email': 'hello.88@gmail.com',
-    'password': '●●●●●●●●●●',
-    'address': 'Flat 5A, House 740, Road 10, G Block, Basundhara R/A, Dhaka',
-  };
-
   // --- STATE MANAGEMENT ---
   bool _isEditing = false;
   bool _isPasswordVisible = false;
   File? _profileImageFile;
 
-  late final TextEditingController _nameController;
-  late final TextEditingController _emailController;
-  late final TextEditingController _passwordController;
-  late final TextEditingController _addressController;
+  // Controllers to manage the text in the fields
+  final TextEditingController _firstNameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController(text: '●●●●●●●●●●');
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: _userData['name']);
-    _emailController = TextEditingController(text: _userData['email']);
-    _passwordController = TextEditingController(text: _userData['password']);
-    _addressController = TextEditingController(text: _userData['address']);
+    _fetchUserData();
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     _emailController.dispose();
-    _passwordController.dispose();
+    _phoneController.dispose();
     _addressController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
-  void _toggleEdit() {
-    setState(() {
-      if (_isEditing) {
-        _userData['name'] = _nameController.text;
-        _userData['email'] = _emailController.text;
-        _userData['address'] = _addressController.text;
+  Future<void> _fetchUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (doc.exists && mounted) {
+        final data = doc.data()!;
+        _firstNameController.text = data['firstName'] ?? '';
+        _lastNameController.text = data['lastName'] ?? '';
+        _emailController.text = data['email'] ?? '';
+        _phoneController.text = data['phone'] ?? '';
+        // If 'address' doesn't exist in Firestore, it will default to an empty string
+        _addressController.text = data['address'] ?? '';
       }
+    }
+  }
+
+
+  void _toggleEdit() async {
+    if (_isEditing) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(child: CircularProgressIndicator()),
+        );
+
+        try {
+          await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+            'firstName': _firstNameController.text.trim(),
+            'lastName': _lastNameController.text.trim(),
+            'email': _emailController.text.trim(),
+            'phone': _phoneController.text.trim(),
+            'address': _addressController.text.trim(),
+          }, SetOptions(merge: true));
+
+          if (mounted) Navigator.of(context).pop();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profile updated successfully!'), backgroundColor: Colors.green),
+          );
+        } catch (e) {
+          if (mounted) Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to update profile: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+    setState(() {
       _isEditing = !_isEditing;
     });
   }
@@ -60,7 +99,6 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   Future<void> _pickImage(ImageSource source) async {
     final ImagePicker picker = ImagePicker();
     final XFile? pickedFile = await picker.pickImage(source: source);
-
     if (pickedFile != null) {
       setState(() {
         _profileImageFile = File(pickedFile.path);
@@ -76,16 +114,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
         return SafeArea(
           child: Wrap(
             children: <Widget>[
-              ListTile(
-                leading: const Icon(Icons.camera_alt),
-                title: const Text('Take a Photo'),
-                onTap: () => _pickImage(ImageSource.camera),
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Upload Image'),
-                onTap: () => _pickImage(ImageSource.gallery),
-              ),
+              ListTile(leading: const Icon(Icons.camera_alt), title: const Text('Take a Photo'), onTap: () => _pickImage(ImageSource.camera)),
+              ListTile(leading: const Icon(Icons.photo_library), title: const Text('Upload Image'), onTap: () => _pickImage(ImageSource.gallery)),
             ],
           ),
         );
@@ -133,38 +163,23 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
               ),
             ),
             const SizedBox(height: 32),
-            _buildInfoField(
-              label: 'User Name',
-              controller: _nameController,
-              icon: Icons.person,
-            ),
+            _buildInfoField(label: 'First Name', controller: _firstNameController, icon: Icons.person),
             const SizedBox(height: 16),
-            _buildInfoField(
-              label: 'Email Address',
-              controller: _emailController,
-              icon: Icons.email,
-            ),
+            _buildInfoField(label: 'Last Name', controller: _lastNameController, icon: Icons.person_outline),
             const SizedBox(height: 16),
-            _buildInfoField(
-              label: 'Password',
-              controller: _passwordController,
-              icon: Icons.lock,
-              isPassword: true,
-            ),
+            _buildInfoField(label: 'Email Address', controller: _emailController, icon: Icons.email),
             const SizedBox(height: 16),
-            _buildInfoField(
-              label: 'Address',
-              controller: _addressController,
-              icon: Icons.location_on,
-              maxLines: 3,
-            ),
+            _buildInfoField(label: 'Phone', controller: _phoneController, icon: Icons.phone),
+            const SizedBox(height: 16),
+            _buildInfoField(label: 'Password', controller: _passwordController, icon: Icons.lock, isPassword: true),
+            const SizedBox(height: 16),
+            _buildInfoField(label: 'Address', controller: _addressController, icon: Icons.location_on, maxLines: 3),
           ],
         ),
       ),
     );
   }
 
-  // ## THIS WIDGET IS UPDATED ##
   Widget _buildInfoField({
     required String label,
     required TextEditingController controller,
@@ -180,8 +195,6 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon),
-        // This logic now shows the icon always for passwords,
-        // but only makes it tappable when editing.
         suffixIcon: isPassword
             ? IconButton(
           icon: Icon(_isPasswordVisible ? Icons.visibility_off : Icons.visibility),
@@ -191,7 +204,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
               _isPasswordVisible = !_isPasswordVisible;
             });
           }
-              : null, // Setting onPressed to null disables the button
+              : null,
         )
             : null,
         border: const OutlineInputBorder(),

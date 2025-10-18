@@ -1,9 +1,38 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import 'personal_info_screen.dart';
 
-class AccountScreen extends StatelessWidget {
+class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
+
+  @override
+  State<AccountScreen> createState() => _AccountScreenState();
+}
+
+class _AccountScreenState extends State<AccountScreen> {
+  String _userName = 'Loading...';
+  String _userEmail = '...';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final userData = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (mounted && userData.exists) {
+        setState(() {
+          _userName = userData.data()?['firstName'] ?? 'User';
+          _userEmail = userData.data()?['email'] ?? 'No email';
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,18 +65,14 @@ class AccountScreen extends StatelessWidget {
               const SizedBox(height: 40),
               const Text('General', style: TextStyle(fontFamily: 'Almarai', fontSize: 13, color: Color(0xFFA8A7A7))),
               const SizedBox(height: 10),
-
               _buildListTile(
                 iconPath: 'assets/icon_personal.png',
                 title: 'Personal Info',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const PersonalInfoScreen()),
-                  );
+                onTap: () async {
+                  await Navigator.push(context, MaterialPageRoute(builder: (context) => const PersonalInfoScreen()));
+                  _fetchUserData(); // Refreshes data after returning
                 },
               ),
-
               _buildListTile(iconPath: 'assets/icon_security.png', title: 'Security', onTap: () {}),
               _buildListTile(iconPath: 'assets/icon_settings.png', title: 'Settings', onTap: () {}),
               const SizedBox(height: 40),
@@ -61,10 +86,7 @@ class AccountScreen extends StatelessWidget {
                 title: 'Log Out',
                 color: const Color(0xFFDF3E3E),
                 onTap: () {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (context) => const LoginScreen()),
-                        (Route<dynamic> route) => false,
-                  );
+                  FirebaseAuth.instance.signOut();
                 },
               ),
             ],
@@ -74,29 +96,22 @@ class AccountScreen extends StatelessWidget {
     );
   }
 
-  // Reusable widget for each item in the list
-  Widget _buildListTile({required String iconPath, required String title, Color? color, required VoidCallback onTap}) {
-    final itemColor = color ?? Colors.black;
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Image.asset(iconPath, color: itemColor, width: 24, height: 24),
-      title: Text(title, style: TextStyle(fontFamily: 'Inter', color: itemColor)),
-      trailing: Icon(Icons.chevron_right, color: itemColor),
-      onTap: onTap,
-    );
-  }
-
-  // Widget for the profile header section
   Widget _buildProfileHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Column(
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Devid', style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black)),
-            SizedBox(height: 4),
-            Text('hello.88@gmail.com', style: TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFFA8A8A8))),
+            Text(
+              _userName,
+              style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _userEmail,
+              style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFFA8A8A8)),
+            ),
           ],
         ),
         Container(
@@ -109,6 +124,17 @@ class AccountScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildListTile({required String iconPath, required String title, Color? color, required VoidCallback onTap}) {
+    final itemColor = color ?? Colors.black;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Image.asset(iconPath, color: itemColor, width: 24, height: 24),
+      title: Text(title, style: TextStyle(fontFamily: 'Inter', color: itemColor)),
+      trailing: Icon(Icons.chevron_right, color: itemColor),
+      onTap: onTap,
     );
   }
 }

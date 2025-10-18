@@ -43,7 +43,6 @@ class MaidDetailsScreen extends StatelessWidget {
     );
   }
 
-  // --- All Helper Widgets MUST be inside this class ---
 
   Widget _buildHeaderImage(BuildContext context) {
     return SizedBox(
@@ -338,4 +337,4 @@ class MaidDetailsScreen extends StatelessWidget {
       ),
     );
   }
-} // <-- This is the closing brace for the MaidDetailsScreen class
+}
