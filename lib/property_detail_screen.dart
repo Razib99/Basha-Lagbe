@@ -16,7 +16,16 @@ class PropertyDetailScreen extends StatefulWidget {
 class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   bool _isExpanded = false;
 
-  Future<void> _launchUrl(String scheme, String path) async { /* ...... */ }
+  Future<void> _launchUrl(String scheme, String path) async {
+    final Uri url = Uri(scheme: scheme, path: path);
+    if (!await launchUrl(url)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not launch $scheme')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +43,6 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
           final data = snapshot.data!.data() as Map<String, dynamic>;
 
-          // Check if the current user is the owner of the post
           final currentUser = FirebaseAuth.instance.currentUser;
           final bool isOwner = currentUser != null && currentUser.uid == data['postedBy'];
 
@@ -42,7 +50,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             children: [
               CustomScrollView(
                 slivers: [
-                  _buildHeaderImage(context, data, isOwner: isOwner), // Pass isOwner flag
+                  _buildHeaderImage(context, data, isOwner: isOwner),
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.all(24.0),
@@ -92,9 +100,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           ),
         ),
       ),
-
       actions: [
-        if (isOwner) // Only show this button if the user is the owner
+        if (isOwner)
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: CircleAvatar(
@@ -102,7 +109,6 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               child: IconButton(
                 icon: const Icon(Icons.edit, color: Colors.white),
                 onPressed: () {
-                  // Navigate to the AddListingScreen in "edit mode"
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -164,9 +170,12 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     );
   }
 
+  // ## THIS SECTION IS CORRECTED ##
   Widget _buildContactSection(Map<String, dynamic> data) {
     String contactNumber = data['contact'] ?? '';
     String ownerId = data['postedBy'] ?? '';
+    // Get the primary category (e.g., 'House', 'Apartment')
+    String category = (data['categories'] as List<dynamic>?)?.first ?? 'Property';
 
     if (ownerId.isEmpty) {
       return const SizedBox.shrink();
@@ -204,7 +213,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(ownerName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  Text('Owner ${data['name'] ?? ''}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                  // This now correctly shows "Owner" and the property category
+                  Text('Owner ($category)', style: const TextStyle(color: Colors.grey, fontSize: 12)),
                 ],
               ),
               const Spacer(),
@@ -232,7 +242,6 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
   Widget _buildGallerySection(BuildContext context, Map<String, dynamic> data) {
     final List galleryImages = data['galleryImageUrls'] ?? [];
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

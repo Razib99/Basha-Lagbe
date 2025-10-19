@@ -40,13 +40,26 @@ class _AddListingScreenState extends State<AddListingScreen> {
   @override
   void initState() {
     super.initState();
-    // If we are in edit mode, fetch the existing data
     if (_isEditing) {
       _fetchPropertyData();
     }
   }
 
-  // ## Function to fetch data for editing ##
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _priceController.dispose();
+    _descriptionController.dispose();
+    _bedsController.dispose();
+    _bathsController.dispose();
+    _balconiesController.dispose();
+    _addressController.dispose();
+    _contactController.dispose();
+    super.dispose();
+  }
+
+  // --- ALL HELPER METHODS ARE NOW INCLUDED ---
+
   Future<void> _fetchPropertyData() async {
     if (widget.propertyIdToEdit == null) return;
     try {
@@ -77,50 +90,81 @@ class _AddListingScreenState extends State<AddListingScreen> {
     }
   }
 
-  @override
-  void dispose() { /* ... same as before ... */ }
-  Future<void> _pickImages() async { /* ... same as before ... */ }
+  Future<void> _pickImages() async {
+    final List<XFile> images = await _picker.pickMultiImage();
+    if (images.isNotEmpty) {
+      setState(() {
+        _selectedImages.addAll(images);
+      });
+    }
+  }
+
   Future<List<String>> _uploadImages(String propertyId) async {
     List<String> imageUrls = [];
     for (var imageFile in _selectedImages) {
-      // Create a reference for each image in Firebase Storage
-      final ref = FirebaseStorage.instance
-          .ref()
-          .child('property_images')
-          .child(propertyId)
-          .child('${DateTime.now().millisecondsSinceEpoch}-${imageFile.name}');
-
-      // Upload the file
+      final ref = FirebaseStorage.instance.ref().child('property_images').child(propertyId).child('${DateTime.now().millisecondsSinceEpoch}-${imageFile.name}');
       await ref.putFile(File(imageFile.path));
-
-      // Get the download URL
       final url = await ref.getDownloadURL();
       imageUrls.add(url);
     }
-    return imageUrls; // This line ensures the function always returns a list
+    return imageUrls;
   }
 
-  void _submitListing() async { /* ...  ... */ }
+  void _submitListing() async {
+    final selectedCategories = _categories.entries.where((entry) => entry.value).map((entry) => entry.key).toList();
 
-  // ## Function to delete a post ##
+    if (_formKey.currentState!.validate() && selectedCategories.isNotEmpty) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
+
+      try {
+        final propertyId = widget.propertyIdToEdit ?? FirebaseFirestore.instance.collection('properties').doc().id;
+        final imageUrls = await _uploadImages(propertyId);
+
+        final data = {
+          'name': _nameController.text.trim(),
+          'price': int.tryParse(_priceController.text.trim()) ?? 0,
+          'description': _descriptionController.text.trim(),
+          'beds': int.tryParse(_bedsController.text.trim()) ?? 0,
+          'baths': int.tryParse(_bathsController.text.trim()) ?? 0,
+          'balconies': int.tryParse(_balconiesController.text.trim()) ?? 0,
+          'location': _addressController.text.trim(),
+          'contact': _contactController.text.trim(),
+          'categories': selectedCategories,
+          'postedBy': user.uid,
+          'createdAt': Timestamp.now(),
+          'galleryImageUrls': imageUrls,
+          'mainImageUrl': imageUrls.isNotEmpty ? imageUrls[0] : null,
+        };
+
+        await FirebaseFirestore.instance.collection('properties').doc(propertyId).set(data, SetOptions(merge: true));
+
+        if (mounted) {
+          Navigator.of(context).pop();
+          Navigator.of(context).pop();
+        }
+      } catch (e) {
+        if (mounted) Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to post listing: $e'), backgroundColor: Colors.red));
+      }
+    } else if (selectedCategories.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select at least one category'), backgroundColor: Colors.red));
+    }
+  }
+
   void _deleteListing() async {
     if (!_isEditing) return;
 
-    // Show a confirmation dialog
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Post'),
         content: const Text('Are you sure you want to permanently delete this listing?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -129,15 +173,12 @@ class _AddListingScreenState extends State<AddListingScreen> {
       try {
         await FirebaseFirestore.instance.collection('properties').doc(widget.propertyIdToEdit).delete();
         if (mounted) {
-          // Pop twice to go back to the list page
           Navigator.of(context).pop();
           Navigator.of(context).pop();
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete post: $e'), backgroundColor: Colors.red),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete post: $e'), backgroundColor: Colors.red));
         }
       }
     }
@@ -146,8 +187,12 @@ class _AddListingScreenState extends State<AddListingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit Post' : 'New Post', style: const TextStyle(fontFamily: 'Almarai', fontSize: 24, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -155,12 +200,40 @@ class _AddListingScreenState extends State<AddListingScreen> {
           child: Form(
             key: _formKey,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 20),
                 _buildTextField(controller: _nameController, hintText: 'Property Name'),
+                const SizedBox(height: 16),
+                _buildTextField(controller: _priceController, hintText: 'Rent Price (/mo)', keyboardType: TextInputType.number),
+                const SizedBox(height: 16),
+                _buildTextField(controller: _descriptionController, hintText: 'Description', maxLines: 4),
+                const SizedBox(height: 24),
+                const Text('Property Info', style: TextStyle(fontFamily: 'Almarai', fontSize: 12, color: Color(0xFF5E5E5E))),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: _buildTextField(controller: _bedsController, hintText: 'Beds', hintFontSize: 10, keyboardType: TextInputType.number)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildTextField(controller: _bathsController, hintText: 'Baths', hintFontSize: 10, keyboardType: TextInputType.number)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildTextField(controller: _balconiesController, hintText: 'Balconies', hintFontSize: 10, keyboardType: TextInputType.number)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildTextField(controller: _addressController, hintText: 'Full Address'),
+                const SizedBox(height: 16),
+                _buildTextField(controller: _contactController, hintText: 'Contact Number', keyboardType: TextInputType.phone),
+                const SizedBox(height: 24),
+                const Text('Select Category', style: TextStyle(fontFamily: 'Almarai', fontSize: 12, color: Color(0xFF5E5E5E))),
+                const SizedBox(height: 8),
+                _buildCategorySelector(),
+                const SizedBox(height: 24),
+                const Text('Add Image', style: TextStyle(fontFamily: 'Almarai', fontSize: 12, color: Color(0xFF5E5E5E))),
+                const SizedBox(height: 8),
+                _buildImageUploader(),
+                const SizedBox(height: 24),
                 _buildPostButton(),
-
-                // ## Show delete button only in edit mode ##
                 if (_isEditing) ...[
                   const SizedBox(height: 16),
                   _buildDeleteButton(),
@@ -174,8 +247,6 @@ class _AddListingScreenState extends State<AddListingScreen> {
     );
   }
 
-  // --- Helper Widgets for the new UI ---
-
   Widget _buildTextField({required TextEditingController controller, required String hintText, double hintFontSize = 12, int maxLines = 1, TextInputType? keyboardType}) {
     return TextFormField(
       controller: controller,
@@ -187,14 +258,8 @@ class _AddListingScreenState extends State<AddListingScreen> {
         filled: true,
         fillColor: const Color(0xFFF3F3F3),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF0A8ED9), width: 1),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF0A8ED9), width: 2),
-        ),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF0A8ED9), width: 1)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF0A8ED9), width: 2)),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
@@ -217,25 +282,17 @@ class _AddListingScreenState extends State<AddListingScreen> {
         crossAxisCount: 3,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        childAspectRatio: 2.2, // Adjust aspect ratio for better spacing
+        childAspectRatio: 2.2,
         children: _categories.keys.map((String key) {
           return InkWell(
-            onTap: () {
-              setState(() {
-                _categories[key] = !_categories[key]!;
-              });
-            },
+            onTap: () => setState(() => _categories[key] = !_categories[key]!),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.start, // Align to the left
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 Checkbox(
                   value: _categories[key],
-                  onChanged: (bool? value) {
-                    setState(() {
-                      _categories[key] = value!;
-                    });
-                  },
-                  activeColor: const Color(0xFF5E5E5E), // Set the checkbox color
+                  onChanged: (bool? value) => setState(() => _categories[key] = value!),
+                  activeColor: const Color(0xFF5E5E5E),
                 ),
                 Text(key, style: const TextStyle(fontFamily: 'Inter', fontSize: 11, color: Color(0xFF5E5E5E))),
               ],
@@ -249,17 +306,36 @@ class _AddListingScreenState extends State<AddListingScreen> {
   Widget _buildImageUploader() {
     return Column(
       children: [
-        if (_selectedImages.isNotEmpty) ...[
+        if (_selectedImages.isNotEmpty)
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, crossAxisSpacing: 8, mainAxisSpacing: 8),
             itemCount: _selectedImages.length,
             itemBuilder: (context, index) {
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.file(File(_selectedImages[index].path), width: double.infinity, height: double.infinity, fit: BoxFit.cover),
+                  ),
+                  Positioned(
+                    top: -8,
+                    right: -8,
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedImages.removeAt(index)),
+                      child: Container(
+                        decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                        child: const Icon(Icons.close, color: Colors.white, size: 18),
+                      ),
+                    ),
+                  ),
+                ],
+              );
             },
           ),
-          const SizedBox(height: 8),
-        ],
+        const SizedBox(height: 8),
         GestureDetector(
           onTap: _pickImages,
           child: Container(
@@ -291,11 +367,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
         height: 45,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          gradient: const LinearGradient(
-            colors: [Color(0xFFA0DAFB), Color(0xFF0A8ED9)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+          gradient: const LinearGradient(colors: [Color(0xFFA0DAFB), Color(0xFF0A8ED9)], begin: Alignment.topCenter, end: Alignment.bottomCenter),
         ),
         child: Center(
           child: Text(_isEditing ? 'Update Post' : 'Post', style: const TextStyle(fontFamily: 'Raleway', fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white)),
@@ -304,7 +376,6 @@ class _AddListingScreenState extends State<AddListingScreen> {
     );
   }
 
-  // ## Delete Button Widget ##
   Widget _buildDeleteButton() {
     return SizedBox(
       width: double.infinity,
