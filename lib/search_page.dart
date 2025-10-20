@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'widgets/property_list_item.dart';
 import 'property_detail_screen.dart';
 
@@ -12,20 +13,16 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   final _searchController = TextEditingController();
-  String _searchText = "";
-
-
-  int? _selectedBeds;
-  int? _selectedBaths;
-  int? _selectedBalconies;
+  String _searchQuery = "";
+  List<String> _recentSearches = [];
 
   @override
   void initState() {
     super.initState();
-    // Update search results when text changes
+    _loadRecentSearches();
     _searchController.addListener(() {
       setState(() {
-        _searchText = _searchController.text;
+        _searchQuery = _searchController.text;
       });
     });
   }
@@ -36,119 +33,135 @@ class _SearchPageState extends State<SearchPage> {
     super.dispose();
   }
 
-  // Helper function to build the Firestore query based on filters
-  Query _buildSearchQuery() {
-    Query query = FirebaseFirestore.instance.collection('properties');
-
-    // Add filters based on selected values (more complex search logic can be added later)
-    if (_selectedBeds != null) {
-      query = query.where('beds', isEqualTo: _selectedBeds);
-    }
-    if (_selectedBaths != null) {
-      query = query.where('baths', isEqualTo: _selectedBaths);
-    }
-    // Add text search (simple 'startsWith' for now)
-    if (_searchText.isNotEmpty) {
-      // Basic search: checks if 'name' starts with the search text (case-insensitive)
-      // Firestore doesn't support case-insensitive 'startsWith' directly,
-      // so we query a range. This requires lowercase fields or more complex setup later.
-      query = query.where('name_lowercase', isGreaterThanOrEqualTo: _searchText.toLowerCase())
-          .where('name_lowercase', isLessThanOrEqualTo: '${_searchText.toLowerCase()}\uf8ff');
-    }
-
-
-    query = query.orderBy('createdAt', descending: true); // Order results
-    return query;
+  // --- Recent Searches Logic ---
+  Future<void> _loadRecentSearches() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _recentSearches = prefs.getStringList('recent_searches') ?? [];
+    });
   }
 
+  Future<void> _saveRecentSearch(String query) async {
+    if (query.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    _recentSearches.remove(query); // Remove if it already exists to move it to the top
+    _recentSearches.insert(0, query); // Add to the beginning of the list
+    if (_recentSearches.length > 5) {
+      _recentSearches = _recentSearches.sublist(0, 5); // Keep only the 5 most recent
+    }
+    await prefs.setStringList('recent_searches', _recentSearches);
+    _loadRecentSearches(); // Reload to update UI
+  }
+
+  Future<void> _deleteRecentSearch(String query) async {
+    final prefs = await SharedPreferences.getInstance();
+    _recentSearches.remove(query);
+    await prefs.setStringList('recent_searches', _recentSearches);
+    _loadRecentSearches(); // Reload to update UI
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.black),
+        elevation: 0,
         title: TextField(
           controller: _searchController,
+          autofocus: true,
           decoration: InputDecoration(
-            hintText: 'Search by name or location...',
+            hintText: 'Search for a home...',
             border: InputBorder.none,
-            hintStyle: TextStyle(color: Colors.grey.shade600),
+            hintStyle: TextStyle(color: Colors.grey.shade500),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => _searchController.clear(),
+            )
+                : null,
           ),
-          style: const TextStyle(color: Colors.black, fontSize: 18),
-          autofocus: true, // Automatically focus the search bar
+          onSubmitted: (value) => _saveRecentSearch(value),
         ),
       ),
-      body: Column(
-        children: [
-          // --- Placeholder for Filter Controls ---
-          Container(
-            padding: const EdgeInsets.all(16.0),
-            color: Colors.grey[100],
-            child: const Center(
-              child: Text(
-                'Filter options (beds, baths, etc.) will go here',
-                style: TextStyle(color: Colors.grey),
-              ),
+      body: _searchQuery.isEmpty ? _buildIdleView() : _buildResultsView(),
+    );
+  }
+
+  // --- UI for the Idle State (no text in search bar) ---
+  Widget _buildIdleView() {
+    return ListView(
+      padding: const EdgeInsets.all(16.0),
+      children: [
+        if (_recentSearches.isNotEmpty) ...[
+          const Text('Recent searches', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 8),
+          ..._recentSearches.map((search) => ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.history),
+            title: Text(search),
+            trailing: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => _deleteRecentSearch(search),
             ),
-          ),
+            onTap: () {
+              _searchController.text = search;
+            },
+          )),
+          const SizedBox(height: 24),
+        ],
+        const Text('Popular searches', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8.0,
+          runSpacing: 8.0,
+          children: ['Apartment', 'Family', 'Bachelor', 'Room', 'Low Rent']
+              .map((label) => Chip(
+            label: Text(label),
+            onDeleted: null, // Makes it a simple chip
+          ))
+              .toList(),
+        ),
+      ],
+    );
+  }
 
-          // --- Display Search Results ---
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _buildSearchQuery().snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  print(snapshot.error); // Print error for debugging
-                  // Check for index error specifically
-                  if (snapshot.error.toString().contains('requires an index')) {
-                    return const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Text(
-                          'Firestore needs an index for this query. Please check the debug console for a link to create it automatically in the Firebase Console.',
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    );
-                  }
-                  return const Center(child: Text('Error loading results.'));
-                }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(child: Text('No results found.'));
-                }
+  // --- UI for the Results State (text in search bar) ---
+  Widget _buildResultsView() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('properties')
+          .where('name_lowercase', isGreaterThanOrEqualTo: _searchQuery.toLowerCase())
+          .where('name_lowercase', isLessThanOrEqualTo: '${_searchQuery.toLowerCase()}\uf8ff')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(child: Text('No results found for "$_searchQuery"'));
+        }
 
-                final results = snapshot.data!.docs;
+        final results = snapshot.data!.docs;
 
-                return ListView.builder(
-                  itemCount: results.length,
-                  itemBuilder: (context, index) {
-                    final data = results[index].data() as Map<String, dynamic>;
-                    final propertyId = results[index].id;
-
-                    return GestureDetector(
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PropertyDetailScreen(propertyId: propertyId))),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                        child: PropertyListItem(
-                          imageUrl: data['mainImageUrl'],
-                          posterName: data['posterName'] ?? 'Owner',
-                          title: data['name'] ?? 'No Name',
-                          location: data['location'] ?? 'No Location',
-                          beds: data['beds'] ?? 0,
-                          baths: data['baths'] ?? 0,
-                          balconies: data['balconies'] ?? 0,
-                        ),
-                      ),
-                    );
-                  },
+        return ListView.builder(
+          itemCount: results.length,
+          itemBuilder: (context, index) {
+            final data = results[index].data() as Map<String, dynamic>;
+            return ListTile(
+              title: Text(data['name'] ?? ''),
+              subtitle: Text(data['location'] ?? ''),
+              onTap: () {
+                _saveRecentSearch(_searchController.text);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => PropertyDetailScreen(propertyId: results[index].id)),
                 );
               },
-            ),
-          ),
-        ],
-      ),
+            );
+          },
+        );
+      },
     );
   }
 }

@@ -17,14 +17,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   bool _isExpanded = false;
 
   Future<void> _launchUrl(String scheme, String path) async {
-    final Uri url = Uri(scheme: scheme, path: path);
-    if (!await launchUrl(url)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not launch $scheme')),
-        );
-      }
-    }
+
   }
 
   @override
@@ -129,10 +122,38 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   }
 
   Widget _buildTitleSection(Map<String, dynamic> data) {
+    final occupantType = data['occupantType'] as String?;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(data['name'] ?? 'No Title', style: const TextStyle(fontFamily: 'Raleway', fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Property name
+            Expanded(
+              child: Text(
+                data['name'] ?? 'No Title',
+                style: const TextStyle(fontFamily: 'Raleway', fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+              ),
+            ),
+            // Conditionally show the tag
+            if (occupantType != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 8.0, top: 4.0),
+                child: Text(
+                  occupantType,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500, // Medium
+                    color: Color(0xFF0A8ED9),
+                  ),
+                ),
+              ),
+          ],
+        ),
         const SizedBox(height: 8),
         Text(data['location'] ?? 'No Location', style: const TextStyle(fontFamily: 'Inter', fontSize: 11, color: Color(0xFF5E5E5E))),
         const SizedBox(height: 8),
@@ -170,7 +191,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     );
   }
 
-  // ## THIS SECTION IS CORRECTED ##
+
   Widget _buildContactSection(Map<String, dynamic> data) {
     String contactNumber = data['contact'] ?? '';
     String ownerId = data['postedBy'] ?? '';

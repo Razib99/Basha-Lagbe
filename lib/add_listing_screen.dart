@@ -16,7 +16,6 @@ class AddListingScreen extends StatefulWidget {
 class _AddListingScreenState extends State<AddListingScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -29,12 +28,12 @@ class _AddListingScreenState extends State<AddListingScreen> {
   Map<String, bool> _categories = {
     'House': false, 'Apartment': false, 'Room': false,
     'Maid': false, 'Electricians': false, 'Car Parking': false,
-    'Family': false, 'Bachelor': false,
   };
+  String? _occupantType;
+  bool _occupantTypeValidationFailed = false;
 
   final List<XFile> _selectedImages = [];
   final ImagePicker _picker = ImagePicker();
-
   bool get _isEditing => widget.propertyIdToEdit != null;
 
   @override
@@ -58,8 +57,6 @@ class _AddListingScreenState extends State<AddListingScreen> {
     super.dispose();
   }
 
-  // --- ALL HELPER METHODS ARE NOW INCLUDED ---
-
   Future<void> _fetchPropertyData() async {
     if (widget.propertyIdToEdit == null) return;
     try {
@@ -75,14 +72,12 @@ class _AddListingScreenState extends State<AddListingScreen> {
         _addressController.text = data['location'] ?? '';
         _contactController.text = data['contact'] ?? '';
 
-        final fetchedCategories = List<String>.from(data['categories'] ?? []);
-        Map<String, bool> updatedCategories = {};
-        _categories.forEach((key, value) {
-          updatedCategories[key] = fetchedCategories.contains(key);
-        });
-
         setState(() {
-          _categories = updatedCategories;
+          _occupantType = data['occupantType'];
+          final fetchedCategories = List<String>.from(data['categories'] ?? []);
+          _categories.forEach((key, value) {
+            _categories[key] = fetchedCategories.contains(key);
+          });
         });
       }
     } catch (e) {
@@ -111,15 +106,21 @@ class _AddListingScreenState extends State<AddListingScreen> {
   }
 
   void _submitListing() async {
-    final selectedCategories = _categories.entries.where((entry) => entry.value).map((entry) => entry.key).toList();
+    setState(() {
+      _occupantTypeValidationFailed = _occupantType == null;
+    });
 
-    if (_formKey.currentState!.validate() && selectedCategories.isNotEmpty) {
+    final selectedCategories = _categories.entries.where((e) => e.value).map((e) => e.key).toList();
+
+    if (_formKey.currentState!.validate() && !_occupantTypeValidationFailed) {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
+      showDialog(context: context, builder: (context) => const Center(child: CircularProgressIndicator()));
 
       try {
+        final posterData = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        final posterName = posterData.data()?['firstName'] ?? 'Anonymous';
         final propertyId = widget.propertyIdToEdit ?? FirebaseFirestore.instance.collection('properties').doc().id;
         final imageUrls = await _uploadImages(propertyId);
 
@@ -133,7 +134,9 @@ class _AddListingScreenState extends State<AddListingScreen> {
           'location': _addressController.text.trim(),
           'contact': _contactController.text.trim(),
           'categories': selectedCategories,
+          'occupantType': _occupantType,
           'postedBy': user.uid,
+          'posterName': posterName,
           'createdAt': Timestamp.now(),
           'galleryImageUrls': imageUrls,
           'mainImageUrl': imageUrls.isNotEmpty ? imageUrls[0] : null,
@@ -149,8 +152,6 @@ class _AddListingScreenState extends State<AddListingScreen> {
         if (mounted) Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to post listing: $e'), backgroundColor: Colors.red));
       }
-    } else if (selectedCategories.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select at least one category'), backgroundColor: Colors.red));
     }
   }
 
@@ -187,12 +188,8 @@ class _AddListingScreenState extends State<AddListingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit Post' : 'New Post', style: const TextStyle(fontFamily: 'Almarai', fontSize: 24, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -229,6 +226,10 @@ class _AddListingScreenState extends State<AddListingScreen> {
                 const SizedBox(height: 8),
                 _buildCategorySelector(),
                 const SizedBox(height: 24),
+                const Text('Available for', style: TextStyle(fontFamily: 'Almarai', fontSize: 12, color: Color(0xFF5E5E5E))),
+                const SizedBox(height: 8),
+                _buildOccupantTypeSelector(),
+                const SizedBox(height: 24),
                 const Text('Add Image', style: TextStyle(fontFamily: 'Almarai', fontSize: 12, color: Color(0xFF5E5E5E))),
                 const SizedBox(height: 8),
                 _buildImageUploader(),
@@ -256,7 +257,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
         hintText: hintText,
         hintStyle: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w200, fontSize: hintFontSize, color: const Color(0xFF898989)),
         filled: true,
-        fillColor: const Color(0xFFF3F3F3),
+        fillColor: const Color(0xF3F3F3),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF0A8ED9), width: 1)),
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF0A8ED9), width: 2)),
@@ -289,16 +290,30 @@ class _AddListingScreenState extends State<AddListingScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                Checkbox(
-                  value: _categories[key],
-                  onChanged: (bool? value) => setState(() => _categories[key] = value!),
-                  activeColor: const Color(0xFF5E5E5E),
-                ),
+                Checkbox(value: _categories[key], onChanged: (v) => setState(() => _categories[key] = v!), activeColor: const Color(0xFF5E5E5E)),
                 Text(key, style: const TextStyle(fontFamily: 'Inter', fontSize: 11, color: Color(0xFF5E5E5E))),
               ],
             ),
           );
         }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildOccupantTypeSelector() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6F6F6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _occupantTypeValidationFailed ? Colors.red : Colors.transparent, width: 2),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Expanded(child: RadioListTile<String>(title: const Text('Family'), value: 'Family', groupValue: _occupantType, onChanged: (v) => setState(() => _occupantType = v))),
+          Expanded(child: RadioListTile<String>(title: const Text('Bachelor'), value: 'Bachelor', groupValue: _occupantType, onChanged: (v) => setState(() => _occupantType = v))),
+        ],
       ),
     );
   }
@@ -316,10 +331,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
               return Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.file(File(_selectedImages[index].path), width: double.infinity, height: double.infinity, fit: BoxFit.cover),
-                  ),
+                  ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.file(File(_selectedImages[index].path), width: double.infinity, height: double.infinity, fit: BoxFit.cover)),
                   Positioned(
                     top: -8,
                     right: -8,
@@ -342,7 +354,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
             height: 35,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: const Color(0xFFF3F3F3),
+              color: const Color(0xF3F3F3),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: const Color(0xFF0A8ED9), width: 1),
             ),

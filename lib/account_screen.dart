@@ -70,7 +70,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 title: 'Personal Info',
                 onTap: () async {
                   await Navigator.push(context, MaterialPageRoute(builder: (context) => const PersonalInfoScreen()));
-                  _fetchUserData(); // Refreshes data after returning
+                  _fetchUserData();
                 },
               ),
               _buildListTile(iconPath: 'assets/icon_security.png', title: 'Security', onTap: () {}),
@@ -81,12 +81,15 @@ class _AccountScreenState extends State<AccountScreen> {
               _buildListTile(iconPath: 'assets/icon_help.png', title: 'Help Center', onTap: () {}),
               _buildListTile(iconPath: 'assets/icon_privacy.png', title: 'Privacy Policy', onTap: () {}),
               _buildListTile(iconPath: 'assets/icon_about.png', title: 'About', onTap: () {}),
+              // ## THIS IS THE UPDATED PART ##
               _buildListTile(
                 iconPath: 'assets/icon_logout.png',
                 title: 'Log Out',
                 color: const Color(0xFFDF3E3E),
                 onTap: () {
+                  // This one line signs the user out of Firebase
                   FirebaseAuth.instance.signOut();
+                  // The StreamBuilder in main_page.dart will automatically navigate to the LoginScreen
                 },
               ),
             ],
