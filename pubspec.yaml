@@ -41,6 +41,10 @@ dependencies:
   url_launcher: ^6.3.0
   firebase_storage: ^11.6.9
   shared_preferences: ^2.2.2
+  #for map
+  flutter_map: ^6.1.0  # this for the map view
+  http: ^1.2.1         # this to talk to the Barikoi API
+  latlong2: ^0.9.0     # flutter_map needs this for coordinates
 
 dev_dependencies:
   flutter_test:

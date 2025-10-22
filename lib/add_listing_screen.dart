@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 class AddListingScreen extends StatefulWidget {
   final String? propertyIdToEdit;
@@ -34,6 +36,9 @@ class _AddListingScreenState extends State<AddListingScreen> {
 
   final List<XFile> _selectedImages = [];
   final ImagePicker _picker = ImagePicker();
+
+  LatLng? _selectedLocation;
+
   bool get _isEditing => widget.propertyIdToEdit != null;
 
   @override
@@ -78,6 +83,9 @@ class _AddListingScreenState extends State<AddListingScreen> {
           _categories.forEach((key, value) {
             _categories[key] = fetchedCategories.contains(key);
           });
+          if (data['latitude'] != null && data['longitude'] != null) {
+            _selectedLocation = LatLng(data['latitude'], data['longitude']);
+          }
         });
       }
     } catch (e) {
@@ -116,7 +124,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      showDialog(context: context, builder: (context) => const Center(child: CircularProgressIndicator()));
+      showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
 
       try {
         final posterData = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
@@ -140,6 +148,8 @@ class _AddListingScreenState extends State<AddListingScreen> {
           'createdAt': Timestamp.now(),
           'galleryImageUrls': imageUrls,
           'mainImageUrl': imageUrls.isNotEmpty ? imageUrls[0] : null,
+          'latitude': _selectedLocation?.latitude,
+          'longitude': _selectedLocation?.longitude,
         };
 
         await FirebaseFirestore.instance.collection('properties').doc(propertyId).set(data, SetOptions(merge: true));
@@ -222,6 +232,10 @@ class _AddListingScreenState extends State<AddListingScreen> {
                 const SizedBox(height: 16),
                 _buildTextField(controller: _contactController, hintText: 'Contact Number', keyboardType: TextInputType.phone),
                 const SizedBox(height: 24),
+                const Text('Pin Location on Map', style: TextStyle(fontFamily: 'Almarai', fontSize: 12, color: Color(0xFF5E5E5E))),
+                const SizedBox(height: 8),
+                _buildMapPicker(),
+                const SizedBox(height: 24),
                 const Text('Select Category', style: TextStyle(fontFamily: 'Almarai', fontSize: 12, color: Color(0xFF5E5E5E))),
                 const SizedBox(height: 8),
                 _buildCategorySelector(),
@@ -257,7 +271,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
         hintText: hintText,
         hintStyle: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w200, fontSize: hintFontSize, color: const Color(0xFF898989)),
         filled: true,
-        fillColor: const Color(0xF3F3F3),
+        fillColor: const Color(0xFFF3F3F3),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF0A8ED9), width: 1)),
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF0A8ED9), width: 2)),
@@ -311,7 +325,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Expanded(child: RadioListTile<String>(title: const Text('Family'), value: 'Family', groupValue: _occupantType, onChanged: (v) => setState(() => _occupantType = v))),
+          Expanded(child: RadioListTile<String>(title: const Text('Family', style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: Color(0xFF5E5E5E))), value: 'Family', groupValue: _occupantType, onChanged: (v) => setState(() => _occupantType = v))),
           Expanded(child: RadioListTile<String>(title: const Text('Bachelor'), value: 'Bachelor', groupValue: _occupantType, onChanged: (v) => setState(() => _occupantType = v))),
         ],
       ),
@@ -354,7 +368,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
             height: 35,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: const Color(0xF3F3F3),
+              color: const Color(0xFFF3F3F3),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: const Color(0xFF0A8ED9), width: 1),
             ),
@@ -400,6 +414,45 @@ class _AddListingScreenState extends State<AddListingScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
         child: const Text('Delete Post'),
+      ),
+    );
+  }
+
+  Widget _buildMapPicker() {
+    return SizedBox(
+      height: 200,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: FlutterMap(
+          options: MapOptions(
+            initialCenter: _selectedLocation ?? LatLng(23.8103, 90.4125), // Default to Dhaka
+            initialZoom: 13.0,
+            interactionOptions: const InteractionOptions(
+              flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+            ),
+            onTap: (tapPosition, point) {
+              setState(() {
+                _selectedLocation = point;
+              });
+            },
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            ),
+            if (_selectedLocation != null)
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: _selectedLocation!,
+                    width: 80,
+                    height: 80,
+                    child: const Icon(Icons.location_pin, color: Colors.red, size: 40),
+                  ),
+                ],
+              ),
+          ],
+        ),
       ),
     );
   }

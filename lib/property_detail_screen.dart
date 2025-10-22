@@ -5,6 +5,11 @@ import 'package:url_launcher/url_launcher.dart';
 import 'widgets/gallery_popup.dart';
 import 'add_listing_screen.dart';
 
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
 class PropertyDetailScreen extends StatefulWidget {
   final String propertyId;
   const PropertyDetailScreen({super.key, required this.propertyId});
@@ -17,14 +22,28 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   bool _isExpanded = false;
 
   Future<void> _launchUrl(String scheme, String path) async {
-    final Uri url = Uri(scheme: scheme, path: path);
-    if (!await launchUrl(url)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not launch $scheme')),
-        );
+    /* ...  ... */
+  }
+
+  Future<LatLng?> _getCoordinates(String address) async {
+    const apiKey = 'bkoi_793dbfe013a6c4e5a943e362293253cda4c0192c24fcfb6b3eb52e84b7ab8b9a';
+    final url = Uri.parse(
+        'https://barikoi.xyz/v1/api/search/geocode/web/place?q=$address&api_key=$apiKey');
+
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 200 && data['place'] != null) {
+          final place = data['place'];
+          return LatLng(double.parse(place['latitude']),
+              double.parse(place['longitude']));
+        }
       }
+    } catch (e) {
+      print('Error fetching coordinates: $e');
     }
+    return null;
   }
 
   @override
@@ -32,7 +51,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: FutureBuilder<DocumentSnapshot>(
-        future: FirebaseFirestore.instance.collection('properties').doc(widget.propertyId).get(),
+        future: FirebaseFirestore.instance.collection('properties').doc(
+            widget.propertyId).get(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -43,7 +63,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
           final data = snapshot.data!.data() as Map<String, dynamic>;
           final currentUser = FirebaseAuth.instance.currentUser;
-          final bool isOwner = currentUser != null && currentUser.uid == data['postedBy'];
+          final bool isOwner = currentUser != null &&
+              currentUser.uid == data['postedBy'];
 
           return Stack(
             children: [
@@ -64,7 +85,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           const SizedBox(height: 24),
                           _buildGallerySection(context, data),
                           const SizedBox(height: 24),
-                          _buildLocationSection(),
+                          _buildLocationSection(data),
                           const SizedBox(height: 120),
                         ],
                       ),
@@ -81,7 +102,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   }
 
 
-  Widget _buildHeaderImage(BuildContext context, Map<String, dynamic> data, {required bool isOwner}) {
+  Widget _buildHeaderImage(BuildContext context, Map<String, dynamic> data,
+      {required bool isOwner}) {
     final imageUrl = data['mainImageUrl'] as String?;
     return SliverAppBar(
       expandedHeight: 250.0,
@@ -110,7 +132,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => AddListingScreen(propertyIdToEdit: widget.propertyId),
+                      builder: (context) =>
+                          AddListingScreen(propertyIdToEdit: widget.propertyId),
                     ),
                   );
                 },
@@ -138,7 +161,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             Expanded(
               child: Text(
                 data['name'] ?? 'No Title',
-                style: const TextStyle(fontFamily: 'Raleway', fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+                style: const TextStyle(fontFamily: 'Raleway',
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black),
               ),
             ),
             if (occupantType != null)
@@ -157,9 +183,15 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           ],
         ),
         const SizedBox(height: 8),
-        Text(data['location'] ?? 'No Location', style: const TextStyle(fontFamily: 'Inter', fontSize: 11, color: Color(0xFF5E5E5E))),
+        Text(data['location'] ?? 'No Location', style: const TextStyle(
+            fontFamily: 'Inter', fontSize: 11, color: Color(0xFF5E5E5E))),
         const SizedBox(height: 8),
-        Text('${data['beds'] ?? 0} Bed    ${data['baths'] ?? 0} Bath   ${data['balconies'] ?? 0} Balcony', style: const TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF5E5E5E))),
+        Text('${data['beds'] ?? 0} Bed    ${data['baths'] ??
+            0} Bath   ${data['balconies'] ?? 0} Balcony',
+            style: const TextStyle(fontFamily: 'Inter',
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF5E5E5E))),
       ],
     );
   }
@@ -174,7 +206,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           description,
           maxLines: _isExpanded ? null : 3,
           overflow: _isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
-          style: const TextStyle(fontFamily: 'Inter', color: Colors.grey, height: 1.5, fontSize: 14),
+          style: const TextStyle(fontFamily: 'Inter',
+              color: Colors.grey,
+              height: 1.5,
+              fontSize: 14),
         ),
         if (isLongText)
           GestureDetector(
@@ -185,7 +220,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             },
             child: Text(
               _isExpanded ? 'Show Less' : 'Read More',
-              style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 14),
+              style: const TextStyle(color: Colors.blue,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14),
             ),
           ),
       ],
@@ -195,7 +232,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   Widget _buildContactSection(Map<String, dynamic> data) {
     String contactNumber = data['contact'] ?? '';
     String ownerId = data['postedBy'] ?? '';
-    String category = (data['categories'] as List<dynamic>?)?.first ?? 'Property';
+    String category = (data['categories'] as List<dynamic>?)?.first ??
+        'Property';
 
     if (ownerId.isEmpty) {
       return const SizedBox.shrink();
@@ -215,22 +253,30 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, spreadRadius: 2)],
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  spreadRadius: 2)
+            ],
           ),
           child: Row(
             children: [
               CircleAvatar(
                 radius: 25,
-                backgroundImage: (ownerImageUrl != null && ownerImageUrl.isNotEmpty)
+                backgroundImage: (ownerImageUrl != null &&
+                    ownerImageUrl.isNotEmpty)
                     ? NetworkImage(ownerImageUrl)
-                    : const AssetImage('assets/default_profile_pic.png') as ImageProvider, // <-- Use default if ownerImageUrl is null/empty
+                    : const AssetImage(
+                    'assets/default_profile_pic.png') as ImageProvider,
               ),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(ownerName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  Text('Owner ($category)', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                  Text(ownerName,
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text('Owner ($category)',
+                      style: const TextStyle(color: Colors.grey, fontSize: 12)),
                 ],
               ),
               const Spacer(),
@@ -261,10 +307,12 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Gallery', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text('Gallery',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
         if (galleryImages.isEmpty)
-          const Center(child: Text('No Photos', style: TextStyle(color: Colors.grey, fontSize: 16)))
+          const Center(child: Text(
+              'No Photos', style: TextStyle(color: Colors.grey, fontSize: 16)))
         else
           SizedBox(
             height: 80,
@@ -277,15 +325,22 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     showDialog(
                       context: context,
                       barrierColor: const Color.fromRGBO(0, 0, 0, 0.8),
-                      builder: (BuildContext context) => GalleryPopup(images: galleryImages, initialIndex: index),
+                      builder: (BuildContext context) =>
+                          GalleryPopup(
+                          images: galleryImages, initialIndex: index),
                     );
                   },
                   child: Padding(
                     padding: const EdgeInsets.only(right: 12.0),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.network(galleryImages[index], width: 80, height: 80, fit: BoxFit.cover,
-                        loadingBuilder: (context, child, progress) => progress == null ? child : const Center(child: CircularProgressIndicator()),
+                      child: Image.network(galleryImages[index], width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, progress) =>
+                        progress == null
+                            ? child
+                            : const Center(child: CircularProgressIndicator()),
                       ),
                     ),
                   ),
@@ -297,15 +352,57 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     );
   }
 
-  Widget _buildLocationSection() {
+  Widget _buildLocationSection(Map<String, dynamic> data) {
+    final String address = data['location'] ?? '';
+    if (address.isEmpty) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Location', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text('Location',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.asset('assets/map_placeholder.png', width: double.infinity, height: 150, fit: BoxFit.cover),
+        SizedBox(
+          height: 200,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: FutureBuilder<LatLng?>(
+              future: _getCoordinates(address),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data == null) {
+                  return const Center(
+                      child: Text('Could not load map location.'));
+                }
+                final coordinates = snapshot.data!;
+                return FlutterMap(
+                  options: MapOptions(
+                    initialCenter: coordinates,
+                    initialZoom: 15.0,
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.example.basha_lagbe',
+                    ),
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: coordinates,
+                          width: 80,
+                          height: 80,
+                          child: const Icon(Icons.location_pin, color: Colors
+                              .red, size: 40),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
         ),
       ],
     );
@@ -328,8 +425,14 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Rent', style: TextStyle(fontFamily: 'Inter', fontSize: 20, fontWeight: FontWeight.w500, color: Colors.white)),
-                Text('$price/mo', style: const TextStyle(fontFamily: 'Inter', fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white)),
+                const Text('Rent', style: TextStyle(fontFamily: 'Inter',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white)),
+                Text('$price/mo', style: const TextStyle(fontFamily: 'Inter',
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white)),
               ],
             ),
             GestureDetector(
@@ -339,9 +442,16 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                 height: 45,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  gradient: const LinearGradient(colors: [Color(0xFFA0DAFB), Color(0xFF0A8ED9)], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+                  gradient: const LinearGradient(
+                      colors: [Color(0xFFA0DAFB), Color(0xFF0A8ED9)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter),
                 ),
-                child: const Center(child: Text('Rent Now', style: TextStyle(fontFamily: 'Raleway', fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white))),
+                child: const Center(child: Text('Rent Now', style: TextStyle(
+                    fontFamily: 'Raleway',
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white))),
               ),
             ),
           ],

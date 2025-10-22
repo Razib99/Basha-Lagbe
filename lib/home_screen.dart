@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'account_screen.dart';
 import 'add_listing_screen.dart';
 import 'apartment_details_screen.dart';
@@ -67,6 +69,8 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildSearchBar(context),
               const SizedBox(height: 24.0),
               _buildBestForYouSection(),
+              const SizedBox(height: 24.0),
+              _buildMapSection(), // MAP SECTION
               const SizedBox(height: 24.0),
               _buildNearbyLocationSection(),
             ],
@@ -339,6 +343,75 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               );
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMapSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Explore on Map',
+            style: TextStyle(fontFamily: 'Inter', fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 326,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20.0),
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance.collection('properties').snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  // Create a list of markers from the property data
+                  final List<Marker> markers = snapshot.data!.docs.map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final lat = data['latitude'];
+                    final lon = data['longitude'];
+
+                    if (lat != null && lon != null) {
+                      return Marker(
+                        point: LatLng(lat, lon),
+                        width: 80,
+                        height: 80,
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => PropertyDetailScreen(propertyId: doc.id)),
+                            );
+                          },
+                          child: const Icon(Icons.location_pin, color: Colors.red, size: 30),
+                        ),
+                      );
+                    }
+                    return null; // Return null if no coordinates
+                  }).where((marker) => marker != null).cast<Marker>().toList();
+
+                  return FlutterMap(
+                    options: const MapOptions(
+                      initialCenter: LatLng(23.8103, 90.4125), // Default to Dhaka
+                      initialZoom: 12.0,
+                      interactionOptions: InteractionOptions(flags: InteractiveFlag.all & ~InteractiveFlag.rotate),
+                    ),
+                    children: [
+                      TileLayer(
+                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      ),
+                      MarkerLayer(markers: markers),
+                    ],
+                  );
+                },
+              ),
+            ),
           ),
         ],
       ),
