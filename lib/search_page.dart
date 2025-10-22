@@ -118,7 +118,7 @@ class _SearchPageState extends State<SearchPage> {
           children: ['Apartment', 'Family', 'Bachelor', 'Room', 'Low Rent']
               .map((label) => Chip(
             label: Text(label),
-            onDeleted: null, // Makes it a simple chip
+            onDeleted: null,
           ))
               .toList(),
         ),

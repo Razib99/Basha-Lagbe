@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 
 class PropertyListItem extends StatelessWidget {
   final String? imageUrl;
-  final String posterName; // <-- NOW DEFINED
+  final String posterName;
   final String title;
   final String location;
+  final String? occupantType;
   final int beds;
   final int baths;
   final int balconies;
@@ -12,9 +13,10 @@ class PropertyListItem extends StatelessWidget {
   const PropertyListItem({
     super.key,
     this.imageUrl,
-    required this.posterName, // <-- NOW REQUIRED
+    required this.posterName,
     required this.title,
     required this.location,
+    this.occupantType,
     required this.beds,
     required this.baths,
     required this.balconies,
@@ -29,14 +31,7 @@ class PropertyListItem extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.grey[100],
         borderRadius: BorderRadius.circular(15.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 4),
-          )
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), spreadRadius: 1, blurRadius: 5, offset: const Offset(0, 4))],
       ),
       child: Row(
         children: [
@@ -87,6 +82,14 @@ class PropertyListItem extends StatelessWidget {
               ],
             ),
           ),
+          if (occupantType != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 8.0),
+              child: Text(
+                occupantType!,
+                style: const TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF898989)),
+              ),
+            ),
         ],
       ),
     );

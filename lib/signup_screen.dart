@@ -71,7 +71,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           }
         });
 
-      } catch (e) { // This now catches ANY error (Auth or Firestore)
+      } catch (e) {
         if (mounted) Navigator.of(context).pop(); // Make sure loading dialog always closes
 
         print('Error during sign up: $e'); // Print the specific error

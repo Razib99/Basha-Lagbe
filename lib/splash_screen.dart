@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart'; // <-- THIS IS THE FIX (package: instead of package.)
-import 'signup_screen.dart';
+import 'package:basha_lagbe/main_page.dart';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -10,14 +11,10 @@ class SplashScreen extends StatelessWidget {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Colors.white,
-              Colors.grey,
-              Colors.black,
-            ],
+            colors: [Colors.white, Colors.grey, Colors.black],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            stops: [0.3, 0.7, 1.0],
+            stops: [0.0, 0.5, 1.0],
           ),
         ),
         child: SafeArea(
@@ -33,41 +30,42 @@ class SplashScreen extends StatelessWidget {
                   text: const TextSpan(
                     style: TextStyle(
                       fontFamily: 'Inter',
-                      fontSize: 54,
+                      fontSize: 48,
                       fontWeight: FontWeight.bold,
                       fontStyle: FontStyle.italic,
                       height: 1.2,
                     ),
                     children: <TextSpan>[
-                      TextSpan(
-                          text: 'RENT A\n',
-                          style: TextStyle(color: Colors.black)),
-                      TextSpan(
-                          text: 'HOME ',
-                          style: TextStyle(color: Color(0xFF0A8ED9))),
-                      TextSpan(
-                          text: 'NOW', style: TextStyle(color: Colors.black)),
+                      TextSpan(text: 'RENT A\n', style: TextStyle(color: Colors.black)),
+                      TextSpan(text: 'HOME ', style: TextStyle(color: Color(0xFF0A8ED9))),
+                      TextSpan(text: 'NOW', style: TextStyle(color: Colors.black)),
                     ],
                   ),
                 ),
                 Image.asset(
                   'assets/splash_vector.png',
-                  width: 430,
-                  height: 430,
+                  width: 393,
+                  height: 393,
                 ),
                 GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const SignUpScreen()),
-                    );
+                  // ## FIX #2: Navigation Logic ##
+                  onTap: () async {
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setBool('hasSeenOnboarding', true);
+
+                    if (context.mounted) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => const MainPage()),
+                      );
+                    }
                   },
                   child: Container(
                     width: 356,
                     height: 51,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(7),
+                      // corners
+                      borderRadius: BorderRadius.circular(12),
                       gradient: const LinearGradient(
                         colors: [Color(0xFFA0DAFB), Color(0xFF0A8ED9)],
                         begin: Alignment.topCenter,
@@ -79,13 +77,7 @@ class SplashScreen extends StatelessWidget {
                       children: [
                         Text(
                           'GET STARTED',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            fontStyle: FontStyle.italic,
-                            color: Colors.white,
-                          ),
+                          style: TextStyle(fontFamily: 'Inter', fontSize: 20, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic, color: Colors.white),
                         ),
                         SizedBox(width: 8),
                         Icon(Icons.arrow_forward, color: Colors.white),

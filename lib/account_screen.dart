@@ -14,6 +14,7 @@ class AccountScreen extends StatefulWidget {
 class _AccountScreenState extends State<AccountScreen> {
   String _userName = 'Loading...';
   String _userEmail = '...';
+  String? _profilePictureUrl;
 
   @override
   void initState() {
@@ -29,6 +30,7 @@ class _AccountScreenState extends State<AccountScreen> {
         setState(() {
           _userName = userData.data()?['firstName'] ?? 'User';
           _userEmail = userData.data()?['email'] ?? 'No email';
+          _profilePictureUrl = userData.data()?['profilePictureUrl'];
         });
       }
     }
@@ -81,15 +83,12 @@ class _AccountScreenState extends State<AccountScreen> {
               _buildListTile(iconPath: 'assets/icon_help.png', title: 'Help Center', onTap: () {}),
               _buildListTile(iconPath: 'assets/icon_privacy.png', title: 'Privacy Policy', onTap: () {}),
               _buildListTile(iconPath: 'assets/icon_about.png', title: 'About', onTap: () {}),
-              // ## THIS IS THE UPDATED PART ##
               _buildListTile(
                 iconPath: 'assets/icon_logout.png',
                 title: 'Log Out',
                 color: const Color(0xFFDF3E3E),
                 onTap: () {
-                  // This one line signs the user out of Firebase
                   FirebaseAuth.instance.signOut();
-                  // The StreamBuilder in main_page.dart will automatically navigate to the LoginScreen
                 },
               ),
             ],
@@ -123,7 +122,14 @@ class _AccountScreenState extends State<AccountScreen> {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), spreadRadius: 1, blurRadius: 4, offset: const Offset(0, 2))],
-            image: const DecorationImage(fit: BoxFit.cover, image: AssetImage('assets/profile_pic.png')),
+            image: DecorationImage(
+              fit: BoxFit.cover,
+              // Show network image or default asset image
+              image: (_profilePictureUrl != null
+                  ? NetworkImage(_profilePictureUrl!)
+                  : const AssetImage('assets/default_profile_pic.png')) // Use your new default image
+              as ImageProvider,
+            ),
           ),
         ),
       ],

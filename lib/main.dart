@@ -1,18 +1,25 @@
+import 'package:basha_lagbe/main_page.dart';
+import 'package:basha_lagbe/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'main_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+
+  final prefs = await SharedPreferences.getInstance();
+  final bool hasSeenOnboarding = prefs.getBool('hasSeenOnboarding') ?? false;
+
+  runApp(MyApp(hasSeenOnboarding: hasSeenOnboarding));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool hasSeenOnboarding;
+  const MyApp({super.key, required this.hasSeenOnboarding});
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +31,7 @@ class MyApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       debugShowCheckedModeBanner: false,
-      home: const MainPage(),
+      home: hasSeenOnboarding ? const MainPage() : const SplashScreen(),
     );
   }
 }

@@ -30,7 +30,7 @@ class CarParkingDetailsScreen extends StatelessWidget {
                       _buildContactBox(),
                       const SizedBox(height: 20),
                       _buildLocationSection(),
-                      const SizedBox(height: 100), // Space for bottom bar
+                      const SizedBox(height: 100),
                     ],
                   ),
                 ),

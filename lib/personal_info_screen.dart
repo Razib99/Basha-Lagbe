@@ -17,7 +17,6 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   bool _isPasswordVisible = false;
   File? _profileImageFile;
 
-  // Controllers to manage the text in the fields
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -52,7 +51,6 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
         _lastNameController.text = data['lastName'] ?? '';
         _emailController.text = data['email'] ?? '';
         _phoneController.text = data['phone'] ?? '';
-        // If 'address' doesn't exist in Firestore, it will default to an empty string
         _addressController.text = data['address'] ?? '';
       }
     }
@@ -147,7 +145,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                     radius: 50,
                     backgroundImage: _profileImageFile != null
                         ? FileImage(_profileImageFile!)
-                        : const AssetImage('assets/profile_pic.png') as ImageProvider,
+                        : const AssetImage('assets/default_profile_pic.png') as ImageProvider,
                   ),
                   if (_isEditing)
                     Positioned(

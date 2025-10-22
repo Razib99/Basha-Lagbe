@@ -27,7 +27,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _logIn() async {
     if (_formKey.currentState!.validate()) {
-      // Show a loading indicator
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -41,7 +40,6 @@ class _LoginScreenState extends State<LoginScreen> {
           password: _passwordController.text.trim(),
         );
 
-        // If sign-in is successful, navigate to the home screen
         if (mounted) {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (context) => const HomeScreen()),

@@ -17,7 +17,14 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   bool _isExpanded = false;
 
   Future<void> _launchUrl(String scheme, String path) async {
-
+    final Uri url = Uri(scheme: scheme, path: path);
+    if (!await launchUrl(url)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not launch $scheme')),
+        );
+      }
+    }
   }
 
   @override
@@ -35,7 +42,6 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           }
 
           final data = snapshot.data!.data() as Map<String, dynamic>;
-
           final currentUser = FirebaseAuth.instance.currentUser;
           final bool isOwner = currentUser != null && currentUser.uid == data['postedBy'];
 
@@ -74,10 +80,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     );
   }
 
-  // --- Helper Widgets ---
 
   Widget _buildHeaderImage(BuildContext context, Map<String, dynamic> data, {required bool isOwner}) {
-    final imageUrl = data['mainImageUrl'] ?? 'assets/green_house_details.png';
+    final imageUrl = data['mainImageUrl'] as String?;
     return SliverAppBar(
       expandedHeight: 250.0,
       pinned: true,
@@ -114,41 +119,38 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           ),
       ],
       flexibleSpace: FlexibleSpaceBar(
-        background: imageUrl.startsWith('http')
+        background: imageUrl != null && imageUrl.startsWith('http')
             ? Image.network(imageUrl, fit: BoxFit.cover)
-            : Image.asset(imageUrl, fit: BoxFit.cover),
+            : Image.asset('assets/green_house_details.png', fit: BoxFit.cover),
       ),
     );
   }
 
   Widget _buildTitleSection(Map<String, dynamic> data) {
     final occupantType = data['occupantType'] as String?;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Property name
             Expanded(
               child: Text(
                 data['name'] ?? 'No Title',
                 style: const TextStyle(fontFamily: 'Raleway', fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
               ),
             ),
-            // Conditionally show the tag
             if (occupantType != null)
               Padding(
-                padding: const EdgeInsets.only(left: 8.0, top: 4.0),
+                padding: const EdgeInsets.only(left: 8.0),
                 child: Text(
                   occupantType,
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 15,
-                    fontWeight: FontWeight.w500, // Medium
-                    color: Color(0xFF0A8ED9),
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF898989),
                   ),
                 ),
               ),
@@ -165,7 +167,6 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   Widget _buildAboutSection(Map<String, dynamic> data) {
     String description = data['description'] ?? 'No description available.';
     bool isLongText = description.length > 120;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -191,27 +192,23 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     );
   }
 
-
   Widget _buildContactSection(Map<String, dynamic> data) {
     String contactNumber = data['contact'] ?? '';
     String ownerId = data['postedBy'] ?? '';
-    // Get the primary category (e.g., 'House', 'Apartment')
     String category = (data['categories'] as List<dynamic>?)?.first ?? 'Property';
 
     if (ownerId.isEmpty) {
       return const SizedBox.shrink();
     }
-
     return FutureBuilder<DocumentSnapshot>(
       future: FirebaseFirestore.instance.collection('users').doc(ownerId).get(),
       builder: (context, ownerSnapshot) {
         if (!ownerSnapshot.hasData || !ownerSnapshot.data!.exists) {
-          return const SizedBox.shrink();
+          return const CircularProgressIndicator();
         }
-
         final ownerData = ownerSnapshot.data!.data() as Map<String, dynamic>;
         final ownerName = ownerData['firstName'] ?? 'Owner';
-        final ownerImageUrl = ownerData['profilePictureUrl'];
+        final ownerImageUrl = ownerData['profilePictureUrl'] as String?;
 
         return Container(
           padding: const EdgeInsets.all(12.0),
@@ -224,17 +221,15 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             children: [
               CircleAvatar(
                 radius: 25,
-                backgroundImage: (ownerImageUrl != null
+                backgroundImage: (ownerImageUrl != null && ownerImageUrl.isNotEmpty)
                     ? NetworkImage(ownerImageUrl)
-                    : const AssetImage('assets/david_profile.png'))
-                as ImageProvider,
+                    : const AssetImage('assets/default_profile_pic.png') as ImageProvider, // <-- Use default if ownerImageUrl is null/empty
               ),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(ownerName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  // This now correctly shows "Owner" and the property category
                   Text('Owner ($category)', style: const TextStyle(color: Colors.grey, fontSize: 12)),
                 ],
               ),

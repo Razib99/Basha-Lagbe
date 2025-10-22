@@ -59,7 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 19.0), // Head space.
+              const SizedBox(height: 16.0),
               _buildHeader(context),
               const SizedBox(height: 24.0),
               _buildCategoryBar(context),
@@ -99,14 +99,12 @@ class _HomeScreenState extends State<HomeScreen> {
           child: const Icon(
             Icons.add,
             color: Colors.white,
-            size: 30, // Adjust size
+            size: 30,
           ),
         ),
       ),
     );
   }
-
-  // --- Helper Widgets ---
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
@@ -134,13 +132,19 @@ class _HomeScreenState extends State<HomeScreen> {
               _fetchUserData();
             },
             child: Container(
-              width: 63,
-              height: 63,
+              width: 50,
+              height: 50,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), spreadRadius: 2, blurRadius: 5, offset: const Offset(0, 3))],
-                image: const DecorationImage(fit: BoxFit.cover, image: AssetImage('assets/profile_pic.png')),
-              ),
+                // ## UPDATED LINE BELOW ##
+                image: DecorationImage(
+                  fit: BoxFit.cover,
+                  image: (FirebaseAuth.instance.currentUser?.photoURL != null && FirebaseAuth.instance.currentUser!.photoURL!.isNotEmpty)
+                      ? NetworkImage(FirebaseAuth.instance.currentUser!.photoURL!)
+                      : const AssetImage('assets/default_profile_pic.png') as ImageProvider, // <-- Use default if no photoURL
+                  )
+                ),
             ),
           ),
         ],
@@ -264,36 +268,44 @@ class _HomeScreenState extends State<HomeScreen> {
               final latestPropertyDoc = snapshot.data!.docs.first;
               final latestPropertyData = latestPropertyDoc.data() as Map<String, dynamic>;
               final String propertyId = latestPropertyDoc.id;
-
-              final imageUrl = latestPropertyData['mainImageUrl'] ?? 'assets/green_house.png';
+              final imageUrl = latestPropertyData['mainImageUrl'] as String?;
 
               return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => PropertyDetailScreen(propertyId: propertyId),
-                    ),
-                  );
-                },
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PropertyDetailScreen(propertyId: propertyId))),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20.0),
                   child: Stack(
                     children: [
-                      Image.network(
-                        imageUrl,
-                        width: 348,
+                      Container(
                         height: 326,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(width: 348, height: 326, color: Colors.grey[300], child: const Center(child: CircularProgressIndicator()));
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(width: 348, height: 326, color: Colors.grey[300], child: const Icon(Icons.broken_image, color: Colors.grey));
-                        },
+                        color: Colors.grey[300],
+                        child: imageUrl != null && imageUrl.isNotEmpty
+                            ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return const Center(child: CircularProgressIndicator());
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Center(child: Icon(Icons.broken_image, color: Colors.grey, size: 50));
+                          },
+                        )
+                            : Center(child: Image.asset('assets/green_house.png', fit: BoxFit.cover, width: double.infinity)), // Fallback local asset
                       ),
-                      Positioned.fill(child: Container(decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.transparent, Colors.black.withOpacity(0.8)], begin: Alignment.topCenter, end: Alignment.bottomCenter, stops: const [0.5, 1.0])))),
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              stops: const [0.5, 1.0],
+                            ),
+                          ),
+                        ),
+                      ),
                       Positioned(
                         bottom: 20,
                         left: 20,
@@ -301,11 +313,24 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(latestPropertyData['name'] ?? 'No Name', style: const TextStyle(fontFamily: 'Almarai', fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+                            Text(
+                              latestPropertyData['name'] ?? 'No Name',
+                              style: const TextStyle(fontFamily: 'Almarai', fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                             const SizedBox(height: 8),
-                            Text(latestPropertyData['location'] ?? 'No Location', style: const TextStyle(fontFamily: 'Almarai', fontSize: 11, color: Colors.white)),
+                            Text(
+                              latestPropertyData['location'] ?? 'No Location',
+                              style: const TextStyle(fontFamily: 'Almarai', fontSize: 11, color: Colors.white),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                             const SizedBox(height: 8),
-                            Text('${latestPropertyData['beds'] ?? 0} Bed    ${latestPropertyData['baths'] ?? 0} Bath   ${latestPropertyData['balconies'] ?? 0} Balcony', style: const TextStyle(fontFamily: 'Almarai', fontSize: 11, color: Colors.white)),
+                            Text(
+                              '${latestPropertyData['beds'] ?? 0} Bed    ${latestPropertyData['baths'] ?? 0} Bath   ${latestPropertyData['balconies'] ?? 0} Balcony',
+                              style: const TextStyle(fontFamily: 'Almarai', fontSize: 11, color: Colors.white),
+                            ),
                           ],
                         ),
                       ),
@@ -340,15 +365,10 @@ class _HomeScreenState extends State<HomeScreen> {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-              if (snapshot.hasError) {
-                return const Center(child: Text('Something went wrong.'));
-              }
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                 return const Center(child: Text('No listings found.'));
               }
-
               final properties = snapshot.data!.docs;
-
               return ListView.builder(
                 itemCount: properties.length,
                 shrinkWrap: true,
@@ -356,7 +376,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 itemBuilder: (context, index) {
                   final propertyData = properties[index].data() as Map<String, dynamic>;
                   final propertyId = properties[index].id;
-
                   return GestureDetector(
                     onTap: () {
                       Navigator.push(
@@ -371,6 +390,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       posterName: propertyData['posterName'] ?? 'Owner',
                       title: propertyData['name'] ?? 'No Name',
                       location: propertyData['location'] ?? 'No Location',
+                      occupantType: propertyData['occupantType'],
                       beds: propertyData['beds'] ?? 0,
                       baths: propertyData['baths'] ?? 0,
                       balconies: propertyData['balconies'] ?? 0,

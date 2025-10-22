@@ -13,7 +13,6 @@ class ApartmentDetailsScreen extends StatelessWidget {
         title: const Text('Apartments for Rent'),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        // Query now checks if the 'categories' list contains 'Apartment'
         stream: FirebaseFirestore.instance
             .collection('properties')
             .where('categories', arrayContains: 'Apartment')
@@ -24,7 +23,7 @@ class ApartmentDetailsScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            print(snapshot.error); // For debugging
+            print(snapshot.error);
             return const Center(child: Text('Something went wrong.'));
           }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -48,6 +47,7 @@ class ApartmentDetailsScreen extends StatelessWidget {
                     posterName: propertyData['posterName'] ?? 'Owner',
                     title: propertyData['name'] ?? 'No Name',
                     location: propertyData['location'] ?? 'No Location',
+                    occupantType: propertyData['occupantType'],
                     beds: propertyData['beds'] ?? 0,
                     baths: propertyData['baths'] ?? 0,
                     balconies: propertyData['balconies'] ?? 0,

@@ -13,7 +13,6 @@ class HouseDetailsScreen extends StatelessWidget {
         title: const Text('Houses for Rent'),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        // Query now checks if the 'categories' list contains 'House'
         stream: FirebaseFirestore.instance
             .collection('properties')
             .where('categories', arrayContains: 'House')
@@ -48,6 +47,7 @@ class HouseDetailsScreen extends StatelessWidget {
                     posterName: propertyData['posterName'] ?? 'Owner',
                     title: propertyData['name'] ?? 'No Name',
                     location: propertyData['location'] ?? 'No Location',
+                    occupantType: propertyData['occupantType'],
                     beds: propertyData['beds'] ?? 0,
                     baths: propertyData['baths'] ?? 0,
                     balconies: propertyData['balconies'] ?? 0,
